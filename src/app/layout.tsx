@@ -6,8 +6,7 @@ import "./globals.css";
 import { cn } from "@/lib/utils";
 
 import { ThemeProvider } from "@/components/providers/theme-provider";
-import { ActiveThemeProvider } from "@/components/active-theme";
-
+import { ActiveThemeProvider } from "@/components/layout/active-theme";
 
 export const metadata: Metadata = {
   title: "SCP - Sistema de Carência e Provimento",

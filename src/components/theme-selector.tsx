@@ -1,6 +1,6 @@
 "use client";
 
-import { useThemeConfig } from "./active-theme";
+import { useThemeConfig } from "./layout/active-theme";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -63,7 +63,6 @@ const SCALED_THEMES = [
   },
 ];
 
-
 export function ThemeSelector() {
   const { activeTheme, setActiveTheme } = useThemeConfig();
 
@@ -86,7 +85,7 @@ export function ThemeSelector() {
         </SelectTrigger>
         <SelectContent align="end">
           <SelectGroup>
-            <SelectLabel>Default</SelectLabel>
+            <SelectLabel>Padrão</SelectLabel>
             {DEFAULT_THEMES.map((theme) => (
               <SelectItem key={theme.name} value={theme.value}>
                 {theme.name}
@@ -95,14 +94,13 @@ export function ThemeSelector() {
           </SelectGroup>
           <SelectSeparator />
           <SelectGroup>
-            <SelectLabel>Scaled</SelectLabel>
+            <SelectLabel>Escalados</SelectLabel>
             {SCALED_THEMES.map((theme) => (
               <SelectItem key={theme.name} value={theme.value}>
                 {theme.name}
               </SelectItem>
             ))}
           </SelectGroup>
-   
         </SelectContent>
       </Select>
     </div>

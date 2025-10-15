@@ -12,11 +12,14 @@ import {
   PieChart,
   Settings2,
   SquareTerminal,
+  UserMinus,
+  UserPlus,
+
 } from "lucide-react";
 
-import { NavMain } from "@/components/nav-main";
+import { NavMain } from "@/components/layout/nav-main";
 
-import { NavUser } from "@/components/nav-user";
+import { NavUser } from "@/components/layout/nav-user";
 
 import {
   Sidebar,
@@ -56,7 +59,7 @@ const data = {
     {
       title: "CARÊNCIA",
       url: "#",
-      icon: SquareTerminal,
+      icon: UserMinus,
       isActive: true,
       items: [
         {
@@ -76,7 +79,7 @@ const data = {
     {
       title: "PROVIMENTO",
       url: "#",
-      icon: Bot,
+      icon: UserPlus,
       items: [
         {
           title: "Incluir",
@@ -161,9 +164,7 @@ const data = {
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   return (
     <Sidebar collapsible="icon" {...props}>
-      <SidebarHeader>
-        <TeamSwitcher teams={data.teams} />
-      </SidebarHeader>
+      <SidebarHeader>{/* <TeamSwitcher teams={data.teams} /> */}</SidebarHeader>
       <SidebarContent>
         <NavMain items={data.navMain} />
         {/* <NavProjects projects={data.projects} /> */}

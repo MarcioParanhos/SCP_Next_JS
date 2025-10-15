@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronRight, type LucideIcon } from "lucide-react";
+import { ChevronRight, LayoutDashboard, type LucideIcon } from "lucide-react";
 
 import {
   Collapsible,
@@ -9,7 +9,6 @@ import {
 } from "@/components/ui/collapsible";
 import {
   SidebarGroup,
-  SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
@@ -24,8 +23,9 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "./ui/dialog";
-import { Button } from "./ui/button";
+} from "../ui/dialog";
+import { Button } from "../ui/button";
+import { IconCirclePlusFilled } from "@tabler/icons-react";
 
 export function NavMain({
   items,
@@ -45,6 +45,13 @@ export function NavMain({
     <SidebarGroup>
       {/* <SidebarGroupLabel>Testando</SidebarGroupLabel> */}
       <SidebarMenu>
+        <SidebarMenuButton
+          tooltip="Quick Create"
+          className="bg-primary cursor-pointer mb-3 text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground active:bg-primary/90 active:text-primary-foreground min-w-8 duration-200 ease-linear"
+        >
+          <LayoutDashboard />
+          <span>DASHBOARD</span>
+        </SidebarMenuButton>
         {items.map((item) => (
           <Collapsible
             key={item.title}
@@ -54,7 +61,10 @@ export function NavMain({
           >
             <SidebarMenuItem>
               <CollapsibleTrigger asChild>
-                <SidebarMenuButton tooltip={item.title}>
+                <SidebarMenuButton
+                  className="cursor-pointer"
+                  tooltip={item.title}
+                >
                   {item.icon && <item.icon />}
                   <span>{item.title}</span>
                   <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
@@ -83,10 +93,10 @@ export function NavMain({
                               </DialogDescription>
                             </DialogHeader>
                             <div className="flex flex-col sm:flex-row w-full gap-4 pt-4">
-                              <Button className="flex-1 py-4">
+                              <Button className="flex-1 py-4 cursor-pointer">
                                 REAL
                               </Button>
-                              <Button className="flex-1 py-4">
+                              <Button className="flex-1 py-4 cursor-pointer">
                                 TEMPORÁRIA
                               </Button>
                             </div>
