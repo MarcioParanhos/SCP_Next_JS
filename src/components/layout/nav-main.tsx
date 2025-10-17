@@ -2,6 +2,8 @@
 
 import { ChevronRight, LayoutDashboard, type LucideIcon } from "lucide-react";
 
+import { usePathname } from "next/navigation";
+
 import {
   Collapsible,
   CollapsibleContent,
@@ -26,6 +28,7 @@ import {
 } from "../ui/dialog";
 import { Button } from "../ui/button";
 import { IconCirclePlusFilled } from "@tabler/icons-react";
+import Link from "next/link";
 
 export function NavMain({
   items,
@@ -41,16 +44,18 @@ export function NavMain({
     }[];
   }[];
 }) {
+  const pathname = usePathname();
   return (
     <SidebarGroup>
-      {/* <SidebarGroupLabel>Testando</SidebarGroupLabel> */}
       <SidebarMenu>
         <SidebarMenuButton
-          tooltip="Quick Create"
+          asChild
           className="bg-primary cursor-pointer mb-3 text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground active:bg-primary/90 active:text-primary-foreground min-w-8 duration-200 ease-linear"
         >
-          <LayoutDashboard />
-          <span>DASHBOARD</span>
+          <Link href="/dashboard">
+            <LayoutDashboard />
+            <span>DASHBOARD</span>
+          </Link>
         </SidebarMenuButton>
         {items.map((item) => (
           <Collapsible
@@ -93,11 +98,19 @@ export function NavMain({
                               </DialogDescription>
                             </DialogHeader>
                             <div className="flex flex-col sm:flex-row w-full gap-4 pt-4">
-                              <Button className="flex-1 py-4 cursor-pointer">
-                                REAL
+                              <Button
+                                asChild
+                                className="flex-1 py-4 cursor-pointer"
+                              >
+                                <Link href="/carencia/real">REAL</Link>
                               </Button>
-                              <Button className="flex-1 py-4 cursor-pointer">
-                                TEMPORÁRIA
+                              <Button
+                                asChild
+                                className="flex-1 py-4 cursor-pointer"
+                              >
+                                <Link href="/carencia/temporaria">
+                                  TEMPORÁRIA
+                                </Link>
                               </Button>
                             </div>
                           </DialogContent>
@@ -105,9 +118,9 @@ export function NavMain({
                       ) : (
                         /* CASO CONTRÁRIO: Mantém o comportamento padrão de link */
                         <SidebarMenuSubButton asChild>
-                          <a href={subItem.url}>
+                          <Link href={subItem.url}>
                             <span>{subItem.title}</span>
-                          </a>
+                          </Link>
                         </SidebarMenuSubButton>
                       )}
                     </SidebarMenuSubItem>
