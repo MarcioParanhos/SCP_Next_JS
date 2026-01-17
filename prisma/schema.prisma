@@ -15,3 +15,43 @@ model User {
   email     String   @unique
   createdAt DateTime @default(now())
 }
+
+
+model Nte {
+  id             Int            @id @default(autoincrement())
+  name           String
+  municipalities Municipality[]
+
+  @@map("nte")
+}
+
+
+model Municipality {
+  id        Int          @id @default(autoincrement())
+  name      String
+  nte_id    Int
+  nte       Nte          @relation(fields: [nte_id], references: [id])
+  schools   SchoolUnit[]
+
+  @@map("municipalities")
+}
+
+
+model SchoolUnit {
+  id              Int          @id @default(autoincrement())
+  name            String
+  sec_cod         String       @map("sec_cod")
+  status          String
+  municipality_id Int
+  municipality    Municipality @relation(fields: [municipality_id], references: [id])
+
+  @@map("school_units")
+}
+
+
+model Discipline {
+  id   Int    @id @default(autoincrement())
+  name String
+
+  @@map("disciplines")
+}
