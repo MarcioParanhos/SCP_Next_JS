@@ -42,6 +42,8 @@ model SchoolUnit {
   name            String
   sec_cod         String       @map("sec_cod")
   status          String
+  typology_id     Int?
+  typology        Typology?   @relation(fields: [typology_id], references: [id])
   municipality_id Int
   municipality    Municipality @relation(fields: [municipality_id], references: [id])
 
@@ -54,4 +56,13 @@ model Discipline {
   name String
 
   @@map("disciplines")
+}
+
+
+model Typology {
+  id    Int          @id @default(autoincrement())
+  name  String
+  units SchoolUnit[]
+
+  @@map("typologies")
 }
