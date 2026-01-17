@@ -93,7 +93,7 @@ const data = {
       items: [
         {
           title: "Unidades Escolares",
-          url: "#",
+          url: "/unidades_escolares",
         },
         {
           title: "Servidores",
