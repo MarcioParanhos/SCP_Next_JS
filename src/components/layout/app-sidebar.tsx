@@ -3,15 +3,12 @@
 import * as React from "react";
 import {
   AudioWaveform,
-  BookOpen,
-  Bot,
+  Building2,
   Command,
   Frame,
   GalleryVerticalEnd,
   Map,
   PieChart,
-  Settings2,
-  SquareTerminal,
   UserMinus,
   UserPlus,
 
@@ -28,8 +25,6 @@ import {
   SidebarHeader,
   SidebarRail,
 } from "@/components/ui/sidebar";
-import { TeamSwitcher } from "./team-switcher";
-import { NavProjects } from "./nav-projects";
 
 // This is sample data.
 const data = {
@@ -70,10 +65,6 @@ const data = {
           title: "Buscar",
           url: "#",
         },
-        // {
-        //   title: "Settings",
-        //   url: "#",
-        // },
       ],
     },
     {
@@ -91,6 +82,21 @@ const data = {
         },
         {
           title: "Reserva",
+          url: "#",
+        },
+      ],
+    },
+    {
+      title: "GERENCIAMENTO",
+      url: "#",
+      icon: Building2,
+      items: [
+        {
+          title: "Unidades Escolares",
+          url: "#",
+        },
+        {
+          title: "Servidores",
           url: "#",
         },
       ],
