@@ -1,5 +1,10 @@
 "use client"
 
+// Componente cliente que renderiza a tabela de unidades escolares.
+// - Busca dados via API se `initialData` não for fornecido
+// - Suporta ordenação, filtros, paginação local (TanStack) e drag-and-drop
+// - Utiliza tipagem `SchoolUnitRow` definida em `schema.ts`
+
 import * as React from "react"
 import {
   closestCenter,
@@ -109,6 +114,8 @@ import {
 
 // Create a separate component for the drag handle
 function DragHandle({ id }: { id: number }) {
+  // Componente pequeno que fornece o "handle" para arrastar linhas
+  // Usa `useSortable` do dnd-kit para disponibilizar atributos e listeners
   const { attributes, listeners } = useSortable({
     id,
   })
@@ -127,6 +134,8 @@ function DragHandle({ id }: { id: number }) {
   )
 }
 
+// Definição das colunas da tabela (TanStack Table)
+// Cada coluna refere-se a uma propriedade de `SchoolUnitRow` ou uma coluna virtual (ações, drag, select)
 const columns: ColumnDef<SchoolUnitRow>[] = [
   {
     id: "drag",
@@ -174,6 +183,7 @@ const columns: ColumnDef<SchoolUnitRow>[] = [
     accessorKey: "municipality",
     header: "Municipio",
     cell: ({ row }) => {
+      // Se o município não estiver atribuído, mostramos um select para atribuir reviewer
       const isAssigned = row.original.municipality !== "Assign reviewer"
 
       if (isAssigned) {
@@ -336,12 +346,20 @@ function DraggableRow({ row }: { row: Row<SchoolUnitRow> }) {
   )
 }
 
+// Componente que representa uma linha arrastável na tabela.
+// - Recebe a `row` do TanStack e aplica as transformações do dnd-kit
+// - Usa `setNodeRef` para referenciar o elemento DOM ao sistema de drag
+
 export function SchoolUnitsDataTable({
   data: initialData,
 }: {
-  data: SchoolUnitRow[]
+  data?: SchoolUnitRow[]
 }) {
-  const [data, setData] = React.useState(() => initialData)
+  // Estado local da tabela
+  // - `data`: linhas atuais exibidas
+  // - `loading`: estado de carregamento ao buscar via API
+  const [data, setData] = React.useState<SchoolUnitRow[]>(() => initialData ?? [])
+  const [loading, setLoading] = React.useState<boolean>(initialData ? false : true)
   const [rowSelection, setRowSelection] = React.useState({})
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>({})
@@ -364,6 +382,51 @@ export function SchoolUnitsDataTable({
     () => data?.map(({ id }) => id) || [],
     [data]
   )
+
+  React.useEffect(() => {
+    if (initialData) return
+
+    let mounted = true
+
+    ;(async () => {
+      // Estratégia de fetch paginado:
+      // - Faz requests para `/api/school_units` em páginas de `pageSize`
+      // - Concatena resultados em `all` até que `hasNext` seja false
+      // - Essa abordagem evita buscar tudo de uma vez com `findMany()` sem limites
+      try {
+        setLoading(true)
+        const pageSize = 100
+        let all: SchoolUnitRow[] = []
+        let cursor: string | null = null
+
+        // fetch pages until hasNext is false
+        while (true) {
+          const params = new URLSearchParams()
+          params.set("pageSize", String(pageSize))
+          if (cursor) params.set("cursor", cursor)
+          const res = await fetch(`/api/school_units?${params.toString()}`)
+          if (!res.ok) throw new Error("Failed to fetch school units")
+          const json = await res.json()
+          const chunk = json.data ?? []
+          all = all.concat(chunk)
+          if (json.hasNext && json.nextCursor) {
+            cursor = json.nextCursor
+          } else break
+        }
+
+        // Ao terminar, atualizamos `data` com todos os registros coletados
+        if (mounted) setData(all)
+      } catch (e) {
+        console.error(e)
+      } finally {
+        if (mounted) setLoading(false)
+      }
+    })()
+
+    return () => {
+      mounted = false
+    }
+  }, [initialData])
 
   const table = useReactTable({
     data,
@@ -400,6 +463,9 @@ export function SchoolUnitsDataTable({
       })
     }
   }
+
+  // Função chamada ao terminar um drag-and-drop
+  // Atualiza a ordem local de `data` usando `arrayMove`
 
   return (
     <Tabs
@@ -507,7 +573,16 @@ export function SchoolUnitsDataTable({
                 ))}
               </TableHeader>
               <TableBody className="**:data-[slot=table-cell]:first:w-8">
-                {table.getRowModel().rows?.length ? (
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={columns.length} className="h-24 text-center">
+                      <div className="flex items-center justify-center gap-2">
+                        <IconLoader className="animate-spin" />
+                        Loading...
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ) : table.getRowModel().rows?.length ? (
                   <SortableContext
                     items={dataIds}
                     strategy={verticalListSortingStrategy}
@@ -657,6 +732,7 @@ function TableCellViewer({ item }: { item: SchoolUnitRow }) {
           {item.schoolUnit}
         </Button>
       </DrawerTrigger>
+      {/* Viewer lateral que mostra detalhes da unidade ao clicar no nome */}
       <DrawerContent>
         <DrawerHeader className="gap-1">
           <DrawerTitle>{item.schoolUnit}</DrawerTitle>
