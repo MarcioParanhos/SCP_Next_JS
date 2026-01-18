@@ -1,11 +1,11 @@
-"use client"
+"use client";
 
 // Componente cliente que renderiza a tabela de unidades escolares.
 // - Busca dados via API se `initialData` não for fornecido
 // - Suporta ordenação, filtros, paginação local (TanStack) e drag-and-drop
 // - Utiliza tipagem `SchoolUnitRow` definida em `schema.ts`
 
-import * as React from "react"
+import * as React from "react";
 import {
   closestCenter,
   DndContext,
@@ -16,15 +16,15 @@ import {
   useSensors,
   type DragEndEvent,
   type UniqueIdentifier,
-} from "@dnd-kit/core"
-import { restrictToVerticalAxis } from "@dnd-kit/modifiers"
+} from "@dnd-kit/core";
+import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
 import {
   arrayMove,
   SortableContext,
   useSortable,
   verticalListSortingStrategy,
-} from "@dnd-kit/sortable"
-import { CSS } from "@dnd-kit/utilities"
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import {
   IconChevronDown,
   IconChevronLeft,
@@ -38,7 +38,7 @@ import {
   IconLoader,
   IconPlus,
   IconTrendingUp,
-} from "@tabler/icons-react"
+} from "@tabler/icons-react";
 import {
   ColumnDef,
   ColumnFiltersState,
@@ -53,21 +53,21 @@ import {
   SortingState,
   useReactTable,
   VisibilityState,
-} from "@tanstack/react-table"
-import { Area, AreaChart, CartesianGrid, XAxis } from "recharts"
-import { toast } from "sonner"
-import { SchoolUnitRow } from "./schema"
+} from "@tanstack/react-table";
+import { Area, AreaChart, CartesianGrid, XAxis } from "recharts";
+import { toast } from "sonner";
+import { SchoolUnitRow } from "./schema";
 
-import { useIsMobile } from "@/hooks/use-mobile"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
+import { useIsMobile } from "@/hooks/use-mobile";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   ChartConfig,
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
-} from "@/components/ui/chart"
-import { Checkbox } from "@/components/ui/checkbox"
+} from "@/components/ui/chart";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Drawer,
   DrawerClose,
@@ -77,7 +77,7 @@ import {
   DrawerHeader,
   DrawerTitle,
   DrawerTrigger,
-} from "@/components/ui/drawer"
+} from "@/components/ui/drawer";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -85,17 +85,17 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+} from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
-import { Separator } from "@/components/ui/separator"
+} from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
 import {
   Table,
   TableBody,
@@ -103,14 +103,10 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs"
-
+} from "@/components/ui/table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { SquarePen, Trash2 } from "lucide-react";
+import AddSchoolUnitDialog from "./AddSchoolUnitDialog";
 
 // Create a separate component for the drag handle
 function DragHandle({ id }: { id: number }) {
@@ -118,7 +114,7 @@ function DragHandle({ id }: { id: number }) {
   // Usa `useSortable` do dnd-kit para disponibilizar atributos e listeners
   const { attributes, listeners } = useSortable({
     id,
-  })
+  });
 
   return (
     <Button
@@ -131,7 +127,7 @@ function DragHandle({ id }: { id: number }) {
       <IconGripVertical className="text-muted-foreground size-3" />
       <span className="sr-only">Drag to reorder</span>
     </Button>
-  )
+  );
 }
 
 // Definição das colunas da tabela (TanStack Table)
@@ -184,10 +180,10 @@ const columns: ColumnDef<SchoolUnitRow>[] = [
     header: "Municipio",
     cell: ({ row }) => {
       // Se o município não estiver atribuído, mostramos um select para atribuir reviewer
-      const isAssigned = row.original.municipality !== "Assign reviewer"
+      const isAssigned = row.original.municipality !== "Assign reviewer";
 
       if (isAssigned) {
-        return row.original.municipality
+        return row.original.municipality;
       }
 
       return (
@@ -211,18 +207,18 @@ const columns: ColumnDef<SchoolUnitRow>[] = [
             </SelectContent>
           </Select>
         </>
-      )
+      );
     },
-  },  
+  },
   {
     accessorKey: "schoolUnit",
     header: "Unidade Escolar",
     cell: ({ row }) => {
-      return <TableCellViewer item={row.original} />
+      return <TableCellViewer item={row.original} />;
     },
     enableHiding: false,
   },
-    {
+  {
     accessorKey: "sec_code",
     header: () => <div className="w-full text-center">Código SEC</div>,
     cell: ({ row }) => (
@@ -230,7 +226,7 @@ const columns: ColumnDef<SchoolUnitRow>[] = [
     ),
   },
   {
-      accessorKey: "typology",
+    accessorKey: "typology",
     header: () => <div className="w-full text-center">Tipologia</div>,
     cell: ({ row }) => (
       <div className="w-full flex justify-center">
@@ -244,9 +240,9 @@ const columns: ColumnDef<SchoolUnitRow>[] = [
     accessorKey: "status",
     header: () => <div className="w-full text-center">Status</div>,
     cell: ({ row }) => {
-      const code = String(row.original.status ?? "")
-      const isActive = code === "1"
-      const label = isActive ? "Ativo" : "Inativo"
+      const code = String(row.original.status ?? "");
+      const isActive = code === "1";
+      const label = isActive ? "Ativo" : "Inativo";
 
       return (
         <div className="w-full flex justify-center">
@@ -265,7 +261,7 @@ const columns: ColumnDef<SchoolUnitRow>[] = [
             {label}
           </Badge>
         </div>
-      )
+      );
     },
   },
 
@@ -275,12 +271,12 @@ const columns: ColumnDef<SchoolUnitRow>[] = [
     cell: ({ row }) => (
       <form
         onSubmit={(e) => {
-          e.preventDefault()
+          e.preventDefault();
           toast.promise(new Promise((resolve) => setTimeout(resolve, 1000)), {
             loading: `Saving ${row.original.schoolUnit}`,
             success: "Done",
             error: "Error",
-          })
+          });
         }}
       >
         <Label htmlFor={`${row.original.id}-limit`} className="sr-only">
@@ -294,7 +290,7 @@ const columns: ColumnDef<SchoolUnitRow>[] = [
       </form>
     ),
   },
-  
+
   {
     id: "actions",
     cell: () => (
@@ -310,21 +306,25 @@ const columns: ColumnDef<SchoolUnitRow>[] = [
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-32">
-          <DropdownMenuItem>Edit</DropdownMenuItem>
-          <DropdownMenuItem>Make a copy</DropdownMenuItem>
-          <DropdownMenuItem>Favorite</DropdownMenuItem>
+          <DropdownMenuItem>
+            <SquarePen /> Edit
+          </DropdownMenuItem>
+          {/* <DropdownMenuItem>Make a copy</DropdownMenuItem>
+          <DropdownMenuItem>Favorite</DropdownMenuItem> */}
           <DropdownMenuSeparator />
-          <DropdownMenuItem variant="destructive">Delete</DropdownMenuItem>
+          <DropdownMenuItem variant="destructive">
+            <Trash2 /> Delete
+          </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
     ),
   },
-]
+];
 
 function DraggableRow({ row }: { row: Row<SchoolUnitRow> }) {
   const { transform, transition, setNodeRef, isDragging } = useSortable({
     id: row.original.id,
-  })
+  });
 
   return (
     <TableRow
@@ -343,7 +343,7 @@ function DraggableRow({ row }: { row: Row<SchoolUnitRow> }) {
         </TableCell>
       ))}
     </TableRow>
-  )
+  );
 }
 
 // Componente que representa uma linha arrastável na tabela.
@@ -353,80 +353,89 @@ function DraggableRow({ row }: { row: Row<SchoolUnitRow> }) {
 export function SchoolUnitsDataTable({
   data: initialData,
 }: {
-  data?: SchoolUnitRow[]
+  data?: SchoolUnitRow[];
 }) {
   // Estado local da tabela
   // - `data`: linhas atuais exibidas
   // - `loading`: estado de carregamento ao buscar via API
-  const [data, setData] = React.useState<SchoolUnitRow[]>(() => initialData ?? [])
-  const [loading, setLoading] = React.useState<boolean>(initialData ? false : true)
-  const [rowSelection, setRowSelection] = React.useState({})
+  const [data, setData] = React.useState<SchoolUnitRow[]>(
+    () => initialData ?? [],
+  );
+  const [loading, setLoading] = React.useState<boolean>(
+    initialData ? false : true,
+  );
+  const [rowSelection, setRowSelection] = React.useState({});
   const [columnVisibility, setColumnVisibility] =
-    React.useState<VisibilityState>({})
+    React.useState<VisibilityState>({});
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
-    []
-  )
-  const [sorting, setSorting] = React.useState<SortingState>([])
+    [],
+  );
+  const [sorting, setSorting] = React.useState<SortingState>([]);
   const [pagination, setPagination] = React.useState({
     pageIndex: 0,
     pageSize: 10,
-  })
-  const sortableId = React.useId()
+  });
+  const sortableId = React.useId();
   const sensors = useSensors(
     useSensor(MouseSensor, {}),
     useSensor(TouchSensor, {}),
-    useSensor(KeyboardSensor, {})
-  )
+    useSensor(KeyboardSensor, {}),
+  );
+
+  const handleCreate = (item: SchoolUnitRow) => {
+    setData((prev) => [item, ...prev])
+    toast.success("Unidade adicionada")
+  }
 
   const dataIds = React.useMemo<UniqueIdentifier[]>(
     () => data?.map(({ id }) => id) || [],
-    [data]
-  )
+    [data],
+  );
 
   React.useEffect(() => {
-    if (initialData) return
+    if (initialData) return;
 
-    let mounted = true
+    let mounted = true;
 
-    ;(async () => {
+    (async () => {
       // Estratégia de fetch paginado:
       // - Faz requests para `/api/school_units` em páginas de `pageSize`
       // - Concatena resultados em `all` até que `hasNext` seja false
       // - Essa abordagem evita buscar tudo de uma vez com `findMany()` sem limites
       try {
-        setLoading(true)
-        const pageSize = 100
-        let all: SchoolUnitRow[] = []
-        let cursor: string | null = null
+        setLoading(true);
+        const pageSize = 100;
+        let all: SchoolUnitRow[] = [];
+        let cursor: string | null = null;
 
         // fetch pages until hasNext is false
         while (true) {
-          const params = new URLSearchParams()
-          params.set("pageSize", String(pageSize))
-          if (cursor) params.set("cursor", cursor)
-          const res = await fetch(`/api/school_units?${params.toString()}`)
-          if (!res.ok) throw new Error("Failed to fetch school units")
-          const json = await res.json()
-          const chunk = json.data ?? []
-          all = all.concat(chunk)
+          const params = new URLSearchParams();
+          params.set("pageSize", String(pageSize));
+          if (cursor) params.set("cursor", cursor);
+          const res = await fetch(`/api/school_units?${params.toString()}`);
+          if (!res.ok) throw new Error("Failed to fetch school units");
+          const json = await res.json();
+          const chunk = json.data ?? [];
+          all = all.concat(chunk);
           if (json.hasNext && json.nextCursor) {
-            cursor = json.nextCursor
-          } else break
+            cursor = json.nextCursor;
+          } else break;
         }
 
         // Ao terminar, atualizamos `data` com todos os registros coletados
-        if (mounted) setData(all)
+        if (mounted) setData(all);
       } catch (e) {
-        console.error(e)
+        console.error(e);
       } finally {
-        if (mounted) setLoading(false)
+        if (mounted) setLoading(false);
       }
-    })()
+    })();
 
     return () => {
-      mounted = false
-    }
-  }, [initialData])
+      mounted = false;
+    };
+  }, [initialData]);
 
   const table = useReactTable({
     data,
@@ -451,16 +460,16 @@ export function SchoolUnitsDataTable({
     getSortedRowModel: getSortedRowModel(),
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
-  })
+  });
 
   function handleDragEnd(event: DragEndEvent) {
-    const { active, over } = event
+    const { active, over } = event;
     if (active && over && active.id !== over.id) {
       setData((data) => {
-        const oldIndex = dataIds.indexOf(active.id)
-        const newIndex = dataIds.indexOf(over.id)
-        return arrayMove(data, oldIndex, newIndex)
-      })
+        const oldIndex = dataIds.indexOf(active.id);
+        const newIndex = dataIds.indexOf(over.id);
+        return arrayMove(data, oldIndex, newIndex);
+      });
     }
   }
 
@@ -517,7 +526,7 @@ export function SchoolUnitsDataTable({
                 .filter(
                   (column) =>
                     typeof column.accessorFn !== "undefined" &&
-                    column.getCanHide()
+                    column.getCanHide(),
                 )
                 .map((column) => {
                   return (
@@ -531,14 +540,11 @@ export function SchoolUnitsDataTable({
                     >
                       {column.id}
                     </DropdownMenuCheckboxItem>
-                  )
+                  );
                 })}
             </DropdownMenuContent>
           </DropdownMenu>
-          <Button variant="default" size="sm">
-            <IconPlus />
-            <span className="hidden lg:inline">Adicionar Unidade</span>
-          </Button>
+          <AddSchoolUnitDialog onCreate={handleCreate} />
         </div>
       </div>
       <TabsContent
@@ -564,10 +570,10 @@ export function SchoolUnitsDataTable({
                             ? null
                             : flexRender(
                                 header.column.columnDef.header,
-                                header.getContext()
+                                header.getContext(),
                               )}
                         </TableHead>
-                      )
+                      );
                     })}
                   </TableRow>
                 ))}
@@ -575,7 +581,10 @@ export function SchoolUnitsDataTable({
               <TableBody className="**:data-[slot=table-cell]:first:w-8">
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={columns.length} className="h-24 text-center">
+                    <TableCell
+                      colSpan={columns.length}
+                      className="h-24 text-center"
+                    >
                       <div className="flex items-center justify-center gap-2">
                         <IconLoader className="animate-spin" />
                         Loading...
@@ -618,7 +627,7 @@ export function SchoolUnitsDataTable({
               <Select
                 value={`${table.getState().pagination.pageSize}`}
                 onValueChange={(value) => {
-                  table.setPageSize(Number(value))
+                  table.setPageSize(Number(value));
                 }}
               >
                 <SelectTrigger size="sm" className="w-20" id="rows-per-page">
@@ -699,7 +708,7 @@ export function SchoolUnitsDataTable({
         <div className="aspect-video w-full flex-1 rounded-lg border border-dashed"></div>
       </TabsContent>
     </Tabs>
-  )
+  );
 }
 
 const chartData = [
@@ -709,7 +718,7 @@ const chartData = [
   { month: "April", desktop: 73, mobile: 190 },
   { month: "May", desktop: 209, mobile: 130 },
   { month: "June", desktop: 214, mobile: 140 },
-]
+];
 
 const chartConfig = {
   desktop: {
@@ -720,10 +729,10 @@ const chartConfig = {
     label: "Mobile",
     color: "var(--primary)",
   },
-} satisfies ChartConfig
+} satisfies ChartConfig;
 
 function TableCellViewer({ item }: { item: SchoolUnitRow }) {
-  const isMobile = useIsMobile()
+  const isMobile = useIsMobile();
 
   return (
     <Drawer direction={isMobile ? "bottom" : "right"}>
@@ -832,15 +841,15 @@ function TableCellViewer({ item }: { item: SchoolUnitRow }) {
               </div>
               <div className="flex flex-col gap-3">
                 <Label htmlFor="status">Status</Label>
-                  <Select defaultValue={item.status}>
-                    <SelectTrigger id="status" className="w-full">
-                      <SelectValue placeholder="Select a status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="1">Ativo</SelectItem>
-                      <SelectItem value="0">Inativo</SelectItem>
-                    </SelectContent>
-                  </Select>
+                <Select defaultValue={item.status}>
+                  <SelectTrigger id="status" className="w-full">
+                    <SelectValue placeholder="Select a status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1">Ativo</SelectItem>
+                    <SelectItem value="0">Inativo</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
@@ -878,5 +887,5 @@ function TableCellViewer({ item }: { item: SchoolUnitRow }) {
         </DrawerFooter>
       </DrawerContent>
     </Drawer>
-  )
+  );
 }
