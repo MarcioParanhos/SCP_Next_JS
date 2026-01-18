@@ -382,6 +382,20 @@ export function SchoolUnitsDataTable({
     useSensor(KeyboardSensor, {}),
   );
 
+  // Mapa de rótulos das colunas para o menu de customização (em português)
+  const columnLabelMap: Record<string, string> = {
+    drag: "Arrastar",
+    select: "Selecionar",
+    nte: "NTE",
+    municipality: "Município",
+    schoolUnit: "Unidade Escolar",
+    sec_code: "Código SEC",
+    typology: "Tipologia",
+    status: "Status",
+    limit: "Limit",
+    actions: "Ações",
+  };
+
   const handleCreate = (item: SchoolUnitRow) => {
     setData((prev) => [item, ...prev])
     toast.success("Unidade adicionada")
@@ -529,16 +543,19 @@ export function SchoolUnitsDataTable({
                     column.getCanHide(),
                 )
                 .map((column) => {
+                  const label = columnLabelMap[column.id] ??
+                    (typeof column.columnDef.header === "string"
+                      ? column.columnDef.header
+                      : column.id);
                   return (
                     <DropdownMenuCheckboxItem
                       key={column.id}
-                      className="capitalize"
                       checked={column.getIsVisible()}
                       onCheckedChange={(value) =>
                         column.toggleVisibility(!!value)
                       }
                     >
-                      {column.id}
+                      {label}
                     </DropdownMenuCheckboxItem>
                   );
                 })}
