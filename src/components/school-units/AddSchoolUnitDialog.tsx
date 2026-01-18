@@ -13,12 +13,25 @@ import {
 import { AddSchoolUnitForm } from "./AddSchoolUnitForm";
 import { SchoolUnitRow } from "./schema";
 
-// Componente wrapper que exibe um Dialog para criar uma nova unidade escolar.
-// - Responsabilidade: renderizar o trigger (botão), controlar o estado aberto/fechado
-//   do Dialog e injetar o formulário `AddSchoolUnitForm` dentro do content.
+// Componente: AddSchoolUnitDialog
+// - Responsabilidade:
+//   Este componente é um wrapper que exibe um modal (Dialog) contendo o
+//   formulário `AddSchoolUnitForm`. Mantém apenas a responsabilidade de
+//   controlar abertura/fechamento do modal e repassar callbacks para o form.
+// - Por que separar em Dialog + Form:
+//   Separar o wrapper do formulário facilita reuso do formulário em outros
+//   contextos (por exemplo: drawer, página dedicada) e deixa o modal focado
+//   apenas em comportamentos de exibição.
 // - Props:
-//   - onCreate: callback opcional chamado quando a unidade é criada com sucesso
-//     (o pai pode usar esse callback para atualizar a lista localmente).
+//   - onCreate?: (item) => void
+//       Callback opcional que será chamado quando o formulário criar a
+//       unidade com sucesso. Normalmente o componente pai usa esse callback
+//       para inserir o novo item na tabela local (optimistic UI).
+// - Acessibilidade / comportamento:
+//   - Usamos `DialogTrigger asChild` para que o botão funcione como trigger
+//     sem envolver markup extra, mantendo foco e semanticidade.
+//   - Quando o formulário chama `onClose`, este wrapper fecha o modal
+//     via `setOpen(false)`.
 export default function AddSchoolUnitDialog({
   onCreate,
 }: {

@@ -1,9 +1,12 @@
 // Rota API: GET /api/municipalities?nteId=<id>
 // Retorna a lista de municípios associados a um NTE específico.
 // Formato: [{ id: string, name: string }]
+// Exemplo de uso (frontend):
+//   const res = await fetch('/api/municipalities?nteId=1');
+//   const municipalities = await res.json(); // => [{ id: '10', name: 'Município X' }, ...]
 // Observações:
-// - Se `nteId` não for informado, retornamos um array vazio.
-// - Converte `id` para string para compatibilidade com valores de Select no frontend.
+// - Se `nteId` não for informado, retornamos um array vazio (frontend interpreta como lista vazia).
+// - Convertemos `id` para string para compatibilidade com os Selects do frontend.
 import { NextResponse, NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 

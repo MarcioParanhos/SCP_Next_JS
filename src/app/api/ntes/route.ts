@@ -1,7 +1,11 @@
 // Rota API: GET /api/ntes
 // Retorna uma lista de NTEs no formato [{ id: string, name: string }]
+// Exemplo de uso (frontend):
+//   const res = await fetch('/api/ntes');
+//   const ntes = await res.json(); // => [{ id: '1', name: 'NTE Centro' }, ...]
 // Observações:
-// - Converte `id` para string porque os Selects no frontend esperam valores string.
+// - Convertemos `id` para string pois os componentes Select do frontend
+//   trabalham com valores string.
 // - Usa Prisma para ler a tabela `nte` definida no schema Prisma.
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
