@@ -4,6 +4,7 @@ import * as React from "react";
 import {
   AudioWaveform,
   Building2,
+  Cog,
   Command,
   Frame,
   GalleryVerticalEnd,
@@ -97,6 +98,28 @@ const data = {
         },
         {
           title: "Servidores",
+          url: "#",
+        },
+      ],
+    },
+    {
+      title: "CONFIGURAÇÕES",
+      url: "#",
+      icon: Cog,
+      items: [
+        {
+          title: "Listas Suspensas",
+          url: "#",
+        },
+      ],
+    },
+    {
+      title: "ADMINISTRAÇÃO",
+      url: "#",
+      icon: Command,
+      items: [
+        {
+          title: "Usuários",
           url: "#",
         },
       ],

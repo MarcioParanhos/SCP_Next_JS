@@ -32,8 +32,8 @@ const Toaster = (props: any) => {
         error: {
           duration: 8000,
           style: {
-            background: "var(--toast-error-bg, #ef4444)",
-            color: "var(--toast-error-text, #ffffff)",
+            background: "var(--toast-error-bg, #ffffff)",
+            color: "var(--toast-error-text, #09122C)",
           },
         },
       }}
