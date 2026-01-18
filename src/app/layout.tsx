@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { ActiveThemeProvider } from "@/components/layout/active-theme";
+import { Toaster } from "@/components/ui/sonner";
 
 export const metadata: Metadata = {
   title: "SCP - Sistema de Carência e Provimento",
@@ -41,6 +42,7 @@ export default async function RootLayout({
         >
           <ActiveThemeProvider initialTheme={activeThemeValue}>
             {children}
+            <Toaster />
           </ActiveThemeProvider>
         </ThemeProvider>
       </body>

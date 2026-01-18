@@ -43,6 +43,54 @@
   --radius-xl: calc(var(--radius) + 4px);
 }
 
+/* Sonner Toaster (toast) theme overrides using Tailwind color tokens (hex)
+   These variables are read by the Sonner Toaster component (see src/components/ui/sonner.tsx).
+   Adjust the hex values below to match Tailwind colors you want for toasts. */
+.toaster {
+  /* normal / default toast */
+  --popover: #1f2937; /* tailwind gray-800 */
+  --popover-foreground: #f9fafb; /* tailwind gray-50 (text) */
+  --border: #374151; /* tailwind gray-700 */
+
+  /* explicit success / error fallbacks (some setups may read these) */
+  --toast-success-bg: #10b981; /* tailwind green-500 */
+  --toast-error-bg: #ef4444; /* tailwind red-500 */
+}
+
+/* Ensure Sonner toast variants use the correct background/text colors */
+.toaster [data-variant="success"] {
+  background-color: var(--toast-success-bg, #ffffff) !important;
+  color: var(--toast-success-text, #10b981) !important;
+  border-color: transparent !important;
+}
+.toaster [data-variant="error"] {
+  background-color: var(--toast-error-bg, #ef4444) !important;
+  color: var(--toast-error-text, #ffffff) !important;
+  border-color: transparent !important;
+}
+
+/* Extra fallback selectors for different Sonner/consumer DOM structures
+   Some versions/renderers use different class names or attributes for toast items.
+   These rules force success/error backgrounds for common variations. */
+.toaster [data-variant="success"],
+.toaster [data-status="success"],
+.toaster .sonner-toast--success,
+.toaster .sn-toast--success,
+.toaster .toast--success,
+.toaster .snackbar--success {
+  background-color: var(--toast-success-bg, #10b981) !important;
+  color: var(--toast-success-text, #ffffff) !important;
+}
+.toaster [data-variant="error"],
+.toaster [data-status="error"],
+.toaster .sonner-toast--error,
+.toaster .sn-toast--error,
+.toaster .toast--error,
+.toaster .snackbar--error {
+  background-color: var(--toast-error-bg, #ef4444) !important;
+  color: var(--toast-error-text, #ffffff) !important;
+}
+
 :root {
   --radius: 0.625rem;
   --background: oklch(1 0 0);

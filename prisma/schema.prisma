@@ -7,15 +7,12 @@ generator client {
   provider = "prisma-client-js"
 }
 
-
-
 model User {
   id        Int      @id @default(autoincrement())
   name      String
   email     String   @unique
   createdAt DateTime @default(now())
 }
-
 
 model Nte {
   id             Int            @id @default(autoincrement())
@@ -25,31 +22,28 @@ model Nte {
   @@map("nte")
 }
 
-
 model Municipality {
-  id        Int          @id @default(autoincrement())
-  name      String
-  nte_id    Int
-  nte       Nte          @relation(fields: [nte_id], references: [id])
-  schools   SchoolUnit[]
+  id      Int          @id @default(autoincrement())
+  name    String
+  nte_id  Int
+  nte     Nte          @relation(fields: [nte_id], references: [id])
+  schools SchoolUnit[]
 
   @@map("municipalities")
 }
-
 
 model SchoolUnit {
   id              Int          @id @default(autoincrement())
   name            String
   sec_cod         String       @map("sec_cod")
-  status          String
+  status          String       @default("1")
   typology_id     Int?
-  typology        Typology?   @relation(fields: [typology_id], references: [id])
+  typology        Typology?    @relation(fields: [typology_id], references: [id])
   municipality_id Int
   municipality    Municipality @relation(fields: [municipality_id], references: [id])
 
   @@map("school_units")
 }
-
 
 model Discipline {
   id   Int    @id @default(autoincrement())
@@ -57,7 +51,6 @@ model Discipline {
 
   @@map("disciplines")
 }
-
 
 model Typology {
   id    Int          @id @default(autoincrement())

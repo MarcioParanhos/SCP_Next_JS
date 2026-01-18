@@ -1,40 +1,45 @@
-"use client"
+"use client";
 
-import {
-  CircleCheckIcon,
-  InfoIcon,
-  Loader2Icon,
-  OctagonXIcon,
-  TriangleAlertIcon,
-} from "lucide-react"
-import { useTheme } from "next-themes"
-import { Toaster as Sonner, type ToasterProps } from "sonner"
+import { useTheme } from "next-themes";
+import { Toaster as HotToaster } from "react-hot-toast";
 
-const Toaster = ({ ...props }: ToasterProps) => {
-  const { theme = "system" } = useTheme()
+const Toaster = (props: any) => {
+  const { theme = "system" } = useTheme();
 
   return (
-    <Sonner
-      theme={theme as ToasterProps["theme"]}
-      className="toaster group"
-      icons={{
-        success: <CircleCheckIcon className="size-4" />,
-        info: <InfoIcon className="size-4" />,
-        warning: <TriangleAlertIcon className="size-4" />,
-        error: <OctagonXIcon className="size-4" />,
-        loading: <Loader2Icon className="size-4 animate-spin" />,
+    <HotToaster
+      position="top-center"
+      containerStyle={{
+        // keep container neutral; individual toasts styled via toastOptions
       }}
-      style={
-        {
-          "--normal-bg": "var(--popover)",
-          "--normal-text": "var(--popover-foreground)",
-          "--normal-border": "var(--border)",
-          "--border-radius": "var(--radius)",
-        } as React.CSSProperties
-      }
+      toastOptions={{
+        // default duration for all toasts (milliseconds)
+        duration: 8000,
+        // default style (uses CSS variables defined in globals.css)
+        style: {
+          background: "var(--popover)",
+          color: "var(--popover-foreground)",
+          border: "1px solid var(--border)",
+          borderRadius: "var(--radius)",
+        },
+        success: {
+          duration: 5000,
+          style: {
+            background: "var(--toast-success-bg, #ffffff)",
+            color: "var(--toast-success-text, #09122C)",
+          },
+        },
+        error: {
+          duration: 8000,
+          style: {
+            background: "var(--toast-error-bg, #ef4444)",
+            color: "var(--toast-error-text, #ffffff)",
+          },
+        },
+      }}
       {...props}
     />
-  )
-}
+  );
+};
 
-export { Toaster }
+export { Toaster };

@@ -1,30 +1,14 @@
 "use client";
 
 // Componente cliente que renderiza a tabela de unidades escolares.
-// - Busca dados via API se `initialData` não for fornecido
-// - Suporta ordenação, filtros, paginação local (TanStack) e drag-and-drop
-// - Utiliza tipagem `SchoolUnitRow` definida em `schema.ts`
+// - Busca dados via API quando `initialData` não é fornecido (paginação incremental)
+// - Fornece: ordenação, filtros, paginação, seleção de linhas e ações por linha
+// - Permite customização de colunas (visibilidade) pelo usuário
+// - Usa o tipo `SchoolUnitRow` definido em `schema.ts`
+// Observação: a funcionalidade de arrastar/soltar (drag-and-drop) foi removida deste componente;
+// a ordem das linhas é controlada pelo estado local `data` e/ou pela paginação.
 
 import * as React from "react";
-import {
-  closestCenter,
-  DndContext,
-  KeyboardSensor,
-  MouseSensor,
-  TouchSensor,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-  type UniqueIdentifier,
-} from "@dnd-kit/core";
-import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
-import {
-  arrayMove,
-  SortableContext,
-  useSortable,
-  verticalListSortingStrategy,
-} from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
 import {
   IconChevronDown,
   IconChevronLeft,
@@ -33,7 +17,6 @@ import {
   IconChevronsRight,
   IconCircleCheckFilled,
   IconDotsVertical,
-  IconGripVertical,
   IconLayoutColumns,
   IconLoader,
   IconPlus,
@@ -55,7 +38,7 @@ import {
   VisibilityState,
 } from "@tanstack/react-table";
 import { Area, AreaChart, CartesianGrid, XAxis } from "recharts";
-import { toast } from "sonner";
+import toast from "react-hot-toast";
 import { SchoolUnitRow } from "./schema";
 
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -108,36 +91,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SquarePen, Trash2 } from "lucide-react";
 import AddSchoolUnitDialog from "./AddSchoolUnitDialog";
 
-// Create a separate component for the drag handle
-function DragHandle({ id }: { id: number }) {
-  // Componente pequeno que fornece o "handle" para arrastar linhas
-  // Usa `useSortable` do dnd-kit para disponibilizar atributos e listeners
-  const { attributes, listeners } = useSortable({
-    id,
-  });
-
-  return (
-    <Button
-      {...attributes}
-      {...listeners}
-      variant="ghost"
-      size="icon"
-      className="text-muted-foreground size-7 hover:bg-transparent"
-    >
-      <IconGripVertical className="text-muted-foreground size-3" />
-      <span className="sr-only">Drag to reorder</span>
-    </Button>
-  );
-}
-
 // Definição das colunas da tabela (TanStack Table)
-// Cada coluna refere-se a uma propriedade de `SchoolUnitRow` ou uma coluna virtual (ações, drag, select)
+// - Cada entrada no array `columns` corresponde a uma coluna visível ou virtual.
+// - Colunas virtuais importantes:
+//   - `select`: checkbox para seleção de linhas (suporta selecionar página inteira)
+//   - `actions`: menu com ações por linha (editar, deletar, etc.)
+// - As propriedades `enableHiding` e `enableSorting` controlam se a coluna pode ser oculta/ordenada.
 const columns: ColumnDef<SchoolUnitRow>[] = [
-  {
-    id: "drag",
-    header: () => null,
-    cell: ({ row }) => <DragHandle id={row.original.id} />,
-  },
   {
     id: "select",
     header: ({ table }) => (
@@ -264,33 +224,6 @@ const columns: ColumnDef<SchoolUnitRow>[] = [
       );
     },
   },
-
-  {
-    accessorKey: "limit",
-    header: () => <div className="w-full text-right">Limit</div>,
-    cell: ({ row }) => (
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          toast.promise(new Promise((resolve) => setTimeout(resolve, 1000)), {
-            loading: `Saving ${row.original.schoolUnit}`,
-            success: "Done",
-            error: "Error",
-          });
-        }}
-      >
-        <Label htmlFor={`${row.original.id}-limit`} className="sr-only">
-          Limit
-        </Label>
-        <Input
-          className="hover:bg-input/30 focus-visible:bg-background dark:hover:bg-input/30 dark:focus-visible:bg-input/30 h-8 w-16 border-transparent bg-transparent text-right shadow-none focus-visible:border dark:bg-transparent"
-          defaultValue={row.original.limit}
-          id={`${row.original.id}-limit`}
-        />
-      </form>
-    ),
-  },
-
   {
     id: "actions",
     cell: () => (
@@ -322,21 +255,13 @@ const columns: ColumnDef<SchoolUnitRow>[] = [
 ];
 
 function DraggableRow({ row }: { row: Row<SchoolUnitRow> }) {
-  const { transform, transition, setNodeRef, isDragging } = useSortable({
-    id: row.original.id,
-  });
-
+  // Renderizador de linha genérico
+  // - Recebe um `Row<SchoolUnitRow>` do TanStack Table e itera sobre `row.getVisibleCells()`.
+  // - Define `data-state="selected"` quando a linha está selecionada para permitir estilos visuais.
+  // - Não contém lógica de reordenação; a manipulação da ordem (se necessária) deve ser feita
+  //   explicitamente no estado `data` ou via ações do usuário.
   return (
-    <TableRow
-      data-state={row.getIsSelected() && "selected"}
-      data-dragging={isDragging}
-      ref={setNodeRef}
-      className="relative z-0 data-[dragging=true]:z-10 data-[dragging=true]:opacity-80"
-      style={{
-        transform: CSS.Transform.toString(transform),
-        transition: transition,
-      }}
-    >
+    <TableRow data-state={row.getIsSelected() && "selected"}>
       {row.getVisibleCells().map((cell) => (
         <TableCell key={cell.id}>
           {flexRender(cell.column.columnDef.cell, cell.getContext())}
@@ -345,10 +270,6 @@ function DraggableRow({ row }: { row: Row<SchoolUnitRow> }) {
     </TableRow>
   );
 }
-
-// Componente que representa uma linha arrastável na tabela.
-// - Recebe a `row` do TanStack e aplica as transformações do dnd-kit
-// - Usa `setNodeRef` para referenciar o elemento DOM ao sistema de drag
 
 export function SchoolUnitsDataTable({
   data: initialData,
@@ -375,16 +296,9 @@ export function SchoolUnitsDataTable({
     pageIndex: 0,
     pageSize: 10,
   });
-  const sortableId = React.useId();
-  const sensors = useSensors(
-    useSensor(MouseSensor, {}),
-    useSensor(TouchSensor, {}),
-    useSensor(KeyboardSensor, {}),
-  );
 
   // Mapa de rótulos das colunas para o menu de customização (em português)
   const columnLabelMap: Record<string, string> = {
-    drag: "Arrastar",
     select: "Selecionar",
     nte: "NTE",
     municipality: "Município",
@@ -398,13 +312,9 @@ export function SchoolUnitsDataTable({
 
   const handleCreate = (item: SchoolUnitRow) => {
     setData((prev) => [item, ...prev])
-    toast.success("Unidade adicionada")
   }
 
-  const dataIds = React.useMemo<UniqueIdentifier[]>(
-    () => data?.map(({ id }) => id) || [],
-    [data],
-  );
+  
 
   React.useEffect(() => {
     if (initialData) return;
@@ -476,19 +386,11 @@ export function SchoolUnitsDataTable({
     getFacetedUniqueValues: getFacetedUniqueValues(),
   });
 
-  function handleDragEnd(event: DragEndEvent) {
-    const { active, over } = event;
-    if (active && over && active.id !== over.id) {
-      setData((data) => {
-        const oldIndex = dataIds.indexOf(active.id);
-        const newIndex = dataIds.indexOf(over.id);
-        return arrayMove(data, oldIndex, newIndex);
-      });
-    }
-  }
-
-  // Função chamada ao terminar um drag-and-drop
-  // Atualiza a ordem local de `data` usando `arrayMove`
+  // Observação sobre ordenação e reordenação
+  // - A funcionalidade de arrastar/soltar foi removida deste componente.
+  // - A ordem das linhas exibidas é determinada pelo estado `data` e pela paginação/ordenacao aplicada
+  //   via TanStack Table. Se for necessária reordenação manual, implemente ações explícitas
+  //   (botões para mover para cima/baixo, endpoint que persiste posição, etc.).
 
   return (
     <Tabs
@@ -561,6 +463,7 @@ export function SchoolUnitsDataTable({
                 })}
             </DropdownMenuContent>
           </DropdownMenu>
+          {/* Chama o Dialog de adicionar unidade escolar */}
           <AddSchoolUnitDialog onCreate={handleCreate} />
         </div>
       </div>
@@ -569,13 +472,6 @@ export function SchoolUnitsDataTable({
         className="relative flex flex-col gap-4 overflow-auto px-4 lg:px-6"
       >
         <div className="overflow-hidden rounded-lg border">
-          <DndContext
-            collisionDetection={closestCenter}
-            modifiers={[restrictToVerticalAxis]}
-            onDragEnd={handleDragEnd}
-            sensors={sensors}
-            id={sortableId}
-          >
             <Table>
               <TableHeader className="bg-muted sticky top-0 z-10">
                 {table.getHeaderGroups().map((headerGroup) => (
@@ -609,14 +505,11 @@ export function SchoolUnitsDataTable({
                     </TableCell>
                   </TableRow>
                 ) : table.getRowModel().rows?.length ? (
-                  <SortableContext
-                    items={dataIds}
-                    strategy={verticalListSortingStrategy}
-                  >
+                  <>
                     {table.getRowModel().rows.map((row) => (
                       <DraggableRow key={row.id} row={row} />
                     ))}
-                  </SortableContext>
+                  </>
                 ) : (
                   <TableRow>
                     <TableCell
@@ -629,7 +522,6 @@ export function SchoolUnitsDataTable({
                 )}
               </TableBody>
             </Table>
-          </DndContext>
         </div>
         <div className="flex items-center justify-between px-4">
           <div className="text-muted-foreground hidden flex-1 text-sm lg:flex">

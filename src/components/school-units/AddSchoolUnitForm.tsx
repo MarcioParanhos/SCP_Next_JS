@@ -6,7 +6,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 
 // Biblioteca de notificações (toast)
-import { toast } from "sonner";
+import toast from "react-hot-toast";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -43,23 +43,23 @@ const formSchema = z.object({
   // NTE: id da Núcleo de Tecnologia Educacional (string)
   // - Obrigatório: o select no frontend fornece o `id` como string.
   // - Quando alterado, o formulário carrega os municípios que pertencem a esse NTE.
-  nte: z.string().min(1, "Required"),
+  nte: z.string().min(1, "Selecione um NTE"),
   // Município: id do município (string)
   // - Obrigatório: depende do NTE escolhido. O backend espera o id do município.
-  municipality: z.string().min(1, "Required"),
+  municipality: z.string().min(1, "Selecione um município"),
   // Código SEC: código da escola usado pelo sistema SEC
   // - Obrigatório: será enviado ao backend como `sec_code` (ou mapeado conforme o schema do DB).
   // - Validação mínima: campo não vazio.
-  sec_code: z.string().min(1, "Required"),
+  sec_code: z.string().min(1, "Informe o código SEC"),
   // Tipologia: tipo da unidade (ex.: SEDE, ANEXO, CEMIT)
   // - Obrigatório: selecionado a partir de um Select com opções estáticas.
-  typology: z.string().min(1, "Required"),
+  typology: z.string().min(1, "Selecione a tipologia"),
   // Categorias: campo livre onde o usuário digita categorias separadas por vírgula
   // - Opcional no formulário. Antes de enviar, transformamos a string em um array de strings.
   categories: z.string().optional(),
   // Nome da unidade: nome exibido da escola/unidade
   // - Obrigatório e com tamanho mínimo de 2 caracteres.
-  schoolUnit: z.string().min(2, "Required"),
+  schoolUnit: z.string().min(2, "O nome da unidade precisa ter ao menos 2 caracteres"),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -173,10 +173,16 @@ export function AddSchoolUnitForm({
     }
   }
 
+  // Handler chamado pelo react-hook-form quando a validação falha
+  function onError(errors: any) {
+    // Mostrar uma mensagem genérica quando houver erros de validação
+    toast.error("Campos obrigatórios pendentes", { duration: 6000 });
+  }
+
   // JSX do formulário: cada campo usa FormField do design system
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+      <form onSubmit={form.handleSubmit(onSubmit, onError)} className="space-y-4">
         {/* NTE e Município lado a lado: grid com duas colunas */}
         <div className="grid grid-cols-2 gap-4">
           {/*
@@ -302,9 +308,9 @@ export function AddSchoolUnitForm({
                       <SelectValue placeholder="Selecione uma tipologia" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="SEDE">SEDE</SelectItem>
-                      <SelectItem value="ANEXO">ANEXO</SelectItem>
-                      <SelectItem value="CEMIT">CEMIT</SelectItem>
+                      <SelectItem value="1">SEDE</SelectItem>
+                      <SelectItem value="2">ANEXO</SelectItem>
+                      <SelectItem value="3">CEMIT</SelectItem>
                     </SelectContent>
                   </Select>
                 </FormControl>
