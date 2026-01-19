@@ -1,5 +1,8 @@
 "use client";
 
+import * as React from "react";
+import { signIn } from "next-auth/react";
+import toast from "react-hot-toast";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -16,11 +19,53 @@ export function LoginForm({
   className,
   ...props
 }: React.ComponentProps<"div">) {
+  const [loading, setLoading] = React.useState(false);
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setLoading(true);
+    const form = new FormData(e.currentTarget as HTMLFormElement);
+    const email = String(form.get("email") ?? "");
+    const password = String(form.get("senha") ?? "");
+
+    const res = await signIn("credentials", {
+      redirect: false,
+      email,
+      password,
+    } as any);
+    // Log da resposta para depuração (aparece no console do navegador)
+    console.log("signIn response:", res);
+
+    if (!res) {
+      setLoading(false);
+      toast.error("Erro inesperado: resposta vazia do servidor.");
+      return;
+    }
+
+    if (res.error) {
+      // Mostra a mensagem de erro retornada pelo next-auth
+      setLoading(false);
+      toast.error(res.error as string);
+      return;
+    }
+
+    if (res.ok) {
+      // Sucesso: mantém `loading` true enquanto a página é redirecionada.
+      // Removido toast de sucesso conforme solicitado.
+      setTimeout(() => (window.location.href = "/dashboard"), 250);
+      return;
+    }
+
+    // Caso não seja ok nem traga erro, exibe informação genérica
+    setLoading(false);
+    toast.error("Falha ao efetuar login. Verifique as credenciais e tente novamente.");
+  }
+
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
       <Card className="overflow-hidden p-0">
         <CardContent className="grid p-0 md:grid-cols-2">
-          <form className="p-6 md:p-8">
+          <form onSubmit={handleSubmit} className="p-6 md:p-8">
             <FieldGroup>
               <div className="flex flex-col items-center gap-2 text-center">
                 <h1 className="text-2xl font-bold">Welcome back</h1>
@@ -30,7 +75,7 @@ export function LoginForm({
               </div>
               <Field>
                 <FieldLabel htmlFor="email">Email</FieldLabel>
-                <Input id="email" type="email" placeholder="m@example.com" required />
+                <Input name="email" id="email" type="email" placeholder="m@example.com" required />
               </Field>
               <Field>
                 <div className="flex items-center">
@@ -39,10 +84,22 @@ export function LoginForm({
                     Esqueceu a senha?
                   </a>
                 </div>
-                <Input id="senha" type="password" required />
+                <Input name="senha" id="senha" type="password" required />
               </Field>
               <Field>
-                <Button type="submit">Login</Button>
+                <Button type="submit" disabled={loading} className="inline-flex items-center justify-center">
+                  {loading ? (
+                    <>
+                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+                      </svg>
+                      Entrando...
+                    </>
+                  ) : (
+                    "Login"
+                  )}
+                </Button>
               </Field>
               <FieldSeparator className="*:data-[slot=field-separator-content]:bg-card">
                 Ou continue com

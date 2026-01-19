@@ -10,18 +10,20 @@ const Toaster = (props: any) => {
     <HotToaster
       position="top-center"
       containerStyle={{
-        // keep container neutral; individual toasts styled via toastOptions
+        // Container neutro para as toasts; os estilos específicos são aplicados
+        // em `toastOptions` abaixo (sucesso, erro, etc.).
       }}
       toastOptions={{
-        // default duration for all toasts (milliseconds)
+        // duração padrão para toasts (em milissegundos)
         duration: 8000,
-        // default style (uses CSS variables defined in globals.css)
+        // estilo padrão (usa variáveis CSS definidas em src/app/globals.css)
         style: {
           background: "var(--popover)",
           color: "var(--popover-foreground)",
           border: "1px solid var(--border)",
           borderRadius: "var(--radius)",
         },
+        // configurações específicas por tipo (success/error) abaixo
         success: {
           duration: 5000,
           style: {

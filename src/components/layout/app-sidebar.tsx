@@ -18,6 +18,7 @@ import {
 import { NavMain } from "@/components/layout/nav-main";
 
 import { NavUser } from "@/components/layout/nav-user";
+import { useSession } from "next-auth/react";
 
 import {
   Sidebar,
@@ -27,30 +28,10 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar";
 
-// This is sample data.
+// Dados de exemplo para a sidebar (usados como fallback se não houver sessão)
 const data = {
-  user: {
-    name: "Marcio Paranhos",
-    email: "marcio.paranhos@gmail.com",
-    avatar: "/avatars/shadcn.jpg",
-  },
-  teams: [
-    {
-      name: "Acme Inc",
-      logo: GalleryVerticalEnd,
-      plan: "Enterprise",
-    },
-    {
-      name: "Acme Corp.",
-      logo: AudioWaveform,
-      plan: "Startup",
-    },
-    {
-      name: "Evil Corp.",
-      logo: Command,
-      plan: "Free",
-    },
-  ],
+  
+ 
   navMain: [
     {
       title: "CARÊNCIA",
@@ -145,6 +126,18 @@ const data = {
 };
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+  const { data: session } = useSession();
+
+  const sessionUser = session?.user
+    ? {
+        name: session.user.name ?? "",
+        email: session.user.email ?? "",
+        avatar: (session.user as any).image ?? undefined,
+      }
+    : undefined;
+
+  const userToShow = sessionUser;
+
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>{/* <TeamSwitcher teams={data.teams} /> */}</SidebarHeader>
@@ -153,7 +146,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         {/* <NavProjects projects={data.projects} /> */}
       </SidebarContent>
       <SidebarFooter>
-        <NavUser user={data.user} />
+        <NavUser user={userToShow} />
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>
