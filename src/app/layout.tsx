@@ -10,6 +10,7 @@ import { AuthProvider } from "@/components/providers/session-provider";
 import { ActiveThemeProvider } from "@/components/layout/active-theme";
 import { Toaster } from "@/components/ui/sonner";
 import { getServerSession } from "next-auth";
+import type { Session } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 
 export const metadata: Metadata = {
@@ -28,7 +29,7 @@ export default async function RootLayout({
   const isScaled = activeThemeValue?.endsWith("-scaled");
 
   // Recupera a sessão no servidor para evitar flicker no cliente.
-  const session = await getServerSession(authOptions as any);
+  const session = (await getServerSession(authOptions as any)) as Session | null;
 
   return (
     <html lang="en" suppressHydrationWarning>
