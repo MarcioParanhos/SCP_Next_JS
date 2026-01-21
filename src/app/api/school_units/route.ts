@@ -1,6 +1,46 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
+
+/**
+ * Manipulador para requisições HTTP DELETE que remove uma unidade escolar (schoolUnit) pelo ID.
+ *
+ * Fluxo:
+ * 1. Recebe o objeto Request (req) e um objeto params contendo id como string.
+ * 2. Converte params.id para Number e valida se a conversão gerou um número válido.
+ *    - Se a conversão resultar em NaN, retorna uma resposta HTTP 400 com a mensagem "Invalid id".
+ * 3. Se o id for válido, tenta excluir o registro correspondente usando prisma.schoolUnit.delete({ where: { id } }).
+ *    - Se a exclusão for bem-sucedida, retorna uma resposta JSON com { ok: true }.
+ * 4. Em caso de erro durante a operação de banco de dados:
+ *    - Loga o erro no console.
+ *    - Se o erro for do tipo Prisma com código 'P2025' (registro não encontrado), retorna HTTP 404 com "Not found".
+ *    - Para qualquer outro erro, retorna HTTP 500 com "Internal Server Error".
+ *
+ * Observações:
+ * - A função é assíncrona e retorna uma Promise contendo um NextResponse.
+ * - Depende de um cliente Prisma disponível no escopo (variável `prisma`) e de NextResponse do Next.js.
+ * - Projetada para ser usada como handler de rota DELETE no App Router do Next.js.
+ *
+ * @param req - Objeto Request da requisição HTTP (não utilizado diretamente no corpo da função).
+ * @param params - Objeto que contém os parâmetros da rota; espera-se params.id como string.
+ * @returns Promise<NextResponse> - Resposta HTTP adequada conforme resultado da operação:
+ *   - 400: ID inválido (NaN)
+ *   - 404: Registro não encontrado (Prisma P2025)
+ *   - 500: Erro interno do servidor
+ */
+export async function DELETE(req: Request, { params }: { params: { id: string } }) {
+  try {
+    const id = Number(params.id);
+    if (Number.isNaN(id)) return new NextResponse("Invalid id", { status: 400 });
+    await prisma.schoolUnit.delete({ where: { id } });
+    return NextResponse.json({ ok: true });
+  } catch (err: any) {
+    console.error(err);
+    if (err.code === 'P2025') return new NextResponse("Not found", { status: 404 });
+    return new NextResponse("Internal Server Error", { status: 500 });
+  }
+}
+
 // Rota API: GET /api/school_units
 // - Suporta paginação por cursor (query params: pageSize, cursor, order)
 // - Retorna um JSON com: { data, nextCursor, hasNext }

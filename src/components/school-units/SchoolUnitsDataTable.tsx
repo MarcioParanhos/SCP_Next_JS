@@ -7,6 +7,67 @@
 // - Usa o tipo `SchoolUnitRow` definido em `schema.ts`
 // Observação: a funcionalidade de arrastar/soltar (drag-and-drop) foi removida deste componente;
 // a ordem das linhas é controlada pelo estado local `data` e/ou pela paginação.
+//
+// --- Comentários sobre as modificações realizadas (resumo em português) ---
+// Alterações implementadas nesta versão do componente:
+// 1) Exclusão de unidade escolar
+//    - Função `handleDelete(id)` adicionada: chama o endpoint DELETE em
+//      `/api/school_units/:id`, atualiza o estado local `data` removendo o item
+//      e exibe feedback com `toast.success` / `toast.error`.
+//    - Estado `openDelete` e `deletingId` para controlar o diálogo de
+//      confirmação antes de executar a exclusão.
+//    - Observação: o endpoint DELETE foi criado em `src/app/api/school_units/[id]/route.ts`.
+//
+// 2) Painel de filtros (`Sheet`)
+//    - Adição de um `Sheet` (painel lateral) com campos: NTE, Município,
+//      Unidade Escolar (texto), Código SEC e Status.
+//    - Estados locais: `filterNte`, `filterMunicipality`, `filterSchoolUnit`,
+//      `filterSecCode`, `filterStatus` e `openSheet`.
+//    - `applyFilters()` monta o array `columnFilters` usado pelo TanStack Table
+//      e fecha o Sheet; `clearFilters()` limpa tanto o Sheet quanto `columnFilters`.
+//    - `removeFilter(id)` permite remover um filtro individual, sincronizando
+//      o estado do Sheet com `columnFilters`.
+//
+// 3) Layout e usabilidade do Sheet
+//    - Campos NTE e Município foram posicionados lado a lado usando uma grid
+//      responsiva (`sm:grid-cols-3`) — inicialmente NTE ocupava 2/3 e
+//      Município 1/3; depois invertido conforme solicitado (Município maior).
+//    - Código SEC e Status também posicionados lado a lado (código 1/3,
+//      status 2/3) na mesma grid responsiva.
+//    - Redução do espaçamento entre campos (`gap-3` → `gap-2`) e labels
+//      com margem inferior menor (`mb-2` → `mb-1`).
+//    - `SelectTrigger` e `Input` dos campos do Sheet receberam `className="w-full h-9"`
+//      para uniformizar largura/altura e eliminar espaçamentos estranhos.
+//    - Para evitar erro com `SelectItem value=""`, usamos `value="none"`
+//      para representar 'Nenhum' e mapeamos `"none"` para string vazia no
+//      `onValueChange` (v === "none" ? "" : v).
+//
+// 4) Exibição de filtros ativos
+//    - Barra de badges exibindo os `columnFilters` foi adicionada acima da tabela.
+//    - Cada badge mostra `label: valor` e tem um botão para remover o filtro
+//      (agora usando `IconX` em vez de um caractere ×).
+//    - A barra só é renderizada quando existe ao menos um filtro ativo,
+//      evitando espaço em branco quando não há filtros.
+//    - Inserido elemento `role="status" aria-live="polite"` (visível apenas
+//      para leitores de tela) que anuncia o número de filtros ativos.
+//
+// 5) Feedback e acessibilidade
+//    - Substituído `alert()` nativo por `react-hot-toast` para feedback não intrusivo.
+//    - Badges e botões de remoção receberam `aria-label`/foco para melhor
+//      acessibilidade.
+//
+// 6) Outras mudanças menores
+//    - Definição das colunas movida para dentro do componente para permitir
+//      uso de `setData` na callback de exclusão.
+//    - Comentários em português adicionados nas novas funções e trechos
+//      importantes para facilitar manutenção.
+//
+// Recomendações futuras (não aplicadas automaticamente):
+// - Para grandes volumes de dados, migrar os filtros para server-side ou
+//   adicionar debounce/autocomplete nos selects para performance.
+// - Ajustar contraste das badges se necessário, e testar comportamento do
+//   Sheet em dispositivos móveis.
+// ---------------------------------------------------------------------------
 
 import * as React from "react";
 import {
@@ -19,6 +80,7 @@ import {
   IconDotsVertical,
   IconLayoutColumns,
   IconLoader,
+  IconX,
   IconPlus,
   IconTrendingUp,
 } from "@tabler/icons-react";
@@ -61,6 +123,7 @@ import {
   DrawerTitle,
   DrawerTrigger,
 } from "@/components/ui/drawer";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -88,171 +151,26 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { SquarePen, TableProperties, Trash2 } from "lucide-react";
+// Importa ícones e componentes de UI usados pelo painel de filtros (Sheet).
+// - `Filter`: ícone do Lucide usado no botão que abre o Sheet.
+// - `Sheet*`: conjunto de componentes (trigger, content, header, footer)
+//    que compõem o painel lateral reutilizável para filtros avançados.
+import { SquarePen, TableProperties, Trash2, Filter } from "lucide-react";
+import {
+  Sheet,
+  SheetTrigger,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetFooter,
+  SheetDescription,
+  SheetClose,
+} from "@/components/ui/sheet";
 import AddSchoolUnitDialog from "./AddSchoolUnitDialog";
 
-// Definição das colunas da tabela (TanStack Table)
-// - Cada entrada no array `columns` corresponde a uma coluna visível ou virtual.
-// - Colunas virtuais importantes:
-//   - `select`: checkbox para seleção de linhas (suporta selecionar página inteira)
-//   - `actions`: menu com ações por linha (editar, deletar, etc.)
-// - As propriedades `enableHiding` e `enableSorting` controlam se a coluna pode ser oculta/ordenada.
-const columns: ColumnDef<SchoolUnitRow>[] = [
-  {
-    id: "select",
-    header: ({ table }) => (
-      <div className="flex items-center justify-center">
-        <Checkbox
-          checked={
-            table.getIsAllPageRowsSelected() ||
-            (table.getIsSomePageRowsSelected() && "indeterminate")
-          }
-          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-          aria-label="Select all"
-        />
-      </div>
-    ),
-    cell: ({ row }) => (
-      <div className="flex items-center justify-center">
-        <Checkbox
-          checked={row.getIsSelected()}
-          onCheckedChange={(value) => row.toggleSelected(!!value)}
-          aria-label="Select row"
-        />
-      </div>
-    ),
-    enableSorting: false,
-    enableHiding: false,
-  },
-  {
-    accessorKey: "nte",
-    header: "NTE",
-    cell: ({ row }) => (
-      <div className="w-full">
-        <Badge variant="outline" className="text-muted-foreground px-1.5">
-          {row.original.nte || "—"}
-        </Badge>
-      </div>
-    ),
-  },
-  {
-    accessorKey: "municipality",
-    header: "Municipio",
-    cell: ({ row }) => {
-      // Se o município não estiver atribuído, mostramos um select para atribuir reviewer
-      const isAssigned = row.original.municipality !== "Assign reviewer";
-
-      if (isAssigned) {
-        return row.original.municipality;
-      }
-
-      return (
-        <>
-          <Label htmlFor={`${row.original.id}-reviewer`} className="sr-only">
-            Reviewer
-          </Label>
-          <Select>
-            <SelectTrigger
-              className="w-38 **:data-[slot=select-value]:block **:data-[slot=select-value]:truncate"
-              size="sm"
-              id={`${row.original.id}-reviewer`}
-            >
-              <SelectValue placeholder="Assign reviewer" />
-            </SelectTrigger>
-            <SelectContent align="end">
-              <SelectItem value="Eddie Lake">Eddie Lake</SelectItem>
-              <SelectItem value="Jamik Tashpulatov">
-                Jamik Tashpulatov
-              </SelectItem>
-            </SelectContent>
-          </Select>
-        </>
-      );
-    },
-  },
-  {
-    accessorKey: "schoolUnit",
-    header: "Unidade Escolar",
-    cell: ({ row }) => {
-      return <TableCellViewer item={row.original} />;
-    },
-    enableHiding: false,
-  },
-  {
-    accessorKey: "sec_code",
-    header: () => <div className="w-full text-center">Código SEC</div>,
-    cell: ({ row }) => (
-      <div className="w-full text-center">{row.original.sec_code}</div>
-    ),
-  },
-  {
-    accessorKey: "typology",
-    header: () => <div className="w-full text-center">Tipologia</div>,
-    cell: ({ row }) => (
-      <div className="w-full flex justify-center">
-        <Badge variant="outline" className="text-muted-foreground px-1.5">
-          {row.original.typology}
-        </Badge>
-      </div>
-    ),
-  },
-  {
-    accessorKey: "status",
-    header: () => <div className="w-full text-center">Status</div>,
-    cell: ({ row }) => {
-      const code = String(row.original.status ?? "");
-      const isActive = code === "1";
-      const label = isActive ? "Ativo" : "Inativo";
-
-      return (
-        <div className="w-full flex justify-center">
-          <Badge
-            className={
-              isActive
-                ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300 px-1.5"
-                : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300 px-1.5"
-            }
-          >
-            {isActive ? (
-              <IconCircleCheckFilled className="size-4 inline mr-1 align-middle text-green-600 dark:text-green-300" />
-            ) : (
-              <IconLoader className="size-4 inline mr-1 align-middle text-red-600 dark:text-red-300" />
-            )}
-            {label}
-          </Badge>
-        </div>
-      );
-    },
-  },
-  {
-    id: "actions",
-    cell: () => (
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            variant="ghost"
-            className="data-[state=open]:bg-muted text-muted-foreground flex size-8"
-            size="icon"
-          >
-            <IconDotsVertical />
-            <span className="sr-only">Open menu</span>
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-32">
-          <DropdownMenuItem>
-            <SquarePen /> Edit
-          </DropdownMenuItem>
-          {/* <DropdownMenuItem>Make a copy</DropdownMenuItem>
-          <DropdownMenuItem>Favorite</DropdownMenuItem> */}
-          <DropdownMenuSeparator />
-          <DropdownMenuItem variant="destructive">
-            <Trash2 /> Delete
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    ),
-  },
-];
+// Nota: As definições das colunas foram movidas para dentro do componente
+// `SchoolUnitsDataTable` para que possamos acessar o estado local (`setData`)
+// e implementar corretamente o handler de exclusão (`handleDelete`).
 
 function DraggableRow({ row }: { row: Row<SchoolUnitRow> }) {
   // Renderizador de linha genérico
@@ -296,6 +214,286 @@ export function SchoolUnitsDataTable({
     pageIndex: 0,
     pageSize: 10,
   });
+
+  // Estados para o Sheet de filtros
+  // - `openSheet`: controla visibilidade do Sheet
+  // - filtros individuais para cada campo que o usuário pediu
+  const [openSheet, setOpenSheet] = React.useState(false);
+  const [filterNte, setFilterNte] = React.useState<string>("");
+  const [filterMunicipality, setFilterMunicipality] = React.useState<string>("");
+  const [filterSchoolUnit, setFilterSchoolUnit] = React.useState<string>("");
+  const [filterSecCode, setFilterSecCode] = React.useState<string>("");
+  const [filterStatus, setFilterStatus] = React.useState<string>("all");
+
+  // Gera opções simples a partir dos dados carregados atualmente
+  // - Isso evita criar dependências adicionais para endpoints de busca.
+  const nteOptions = Array.from(
+    new Set(data.map((d) => d.nte).filter(Boolean) as string[]),
+  );
+  const municipalityOptions = Array.from(
+    new Set(data.map((d) => d.municipality).filter(Boolean) as string[]),
+  );
+
+  // Aplica os filtros selecionados no Sheet para o TanStack Table
+  function applyFilters() {
+    const newFilters: { id: string; value: string }[] = [];
+
+    if (filterNte && filterNte !== "") newFilters.push({ id: "nte", value: filterNte });
+    if (filterMunicipality && filterMunicipality !== "") newFilters.push({ id: "municipality", value: filterMunicipality });
+    if (filterSchoolUnit && filterSchoolUnit.trim() !== "") newFilters.push({ id: "schoolUnit", value: filterSchoolUnit.trim() });
+    if (filterSecCode && filterSecCode.trim() !== "") newFilters.push({ id: "sec_code", value: filterSecCode.trim() });
+    if (filterStatus && filterStatus !== "all") newFilters.push({ id: "status", value: filterStatus });
+
+    // Define os filtros das colunas no estado da tabela
+    setColumnFilters(newFilters as any);
+    // Fecha o Sheet após aplicar
+    setOpenSheet(false);
+  }
+
+  // Limpa filtros do Sheet e do estado da tabela
+  function clearFilters() {
+    setFilterNte("");
+    setFilterMunicipality("");
+    setFilterSchoolUnit("");
+    setFilterSecCode("");
+    setFilterStatus("all");
+    setColumnFilters([]);
+  }
+
+  // Remove um filtro individual por id (ex: 'nte', 'municipality', 'status', ...)
+  function removeFilter(id: string) {
+    // Remove do estado da tabela
+    setColumnFilters((prev) => (prev as any[]).filter((f) => f.id !== id) as any);
+
+    // Sincroniza também o estado do Sheet caso esteja aberto
+    switch (id) {
+      case "nte":
+        setFilterNte("");
+        break;
+      case "municipality":
+        setFilterMunicipality("");
+        break;
+      case "schoolUnit":
+        setFilterSchoolUnit("");
+        break;
+      case "sec_code":
+        setFilterSecCode("");
+        break;
+      case "status":
+        setFilterStatus("all");
+        break;
+      default:
+        break;
+    }
+  }
+
+  // Estado para controlar o diálogo de confirmação de exclusão
+  const [openDelete, setOpenDelete] = React.useState(false);
+  // Armazena o id da unidade que está sendo considerada para exclusão
+  const [deletingId, setDeletingId] = React.useState<number | null>(null);
+
+  // -----------------------------------------------------------------------
+  // Função: handleDelete
+  // - Esta função é responsável por realizar a chamada ao endpoint DELETE
+  //   que implementamos em `src/app/api/school_units/[id]/route.ts`.
+  // - Passos executados:
+  //   1) Solicita confirmação ao usuário via `confirm`.
+  //   2) Envia `fetch` com método HTTP `DELETE` para `/api/school_units/:id`.
+  //   3) Em caso de sucesso, atualiza o estado local `data` removendo o item.
+  //   4) Exibe feedback ao usuário usando `toast` (sucesso ou erro).
+  // - Comentários adicionais em português para facilitar manutenção.
+  // -----------------------------------------------------------------------
+  async function handleDelete(id: number | null) {
+    // Se não houver id válido, nada a fazer
+    if (id === null) return;
+
+    try {
+      // Realiza a chamada ao endpoint DELETE implementado no backend
+      const res = await fetch(`/api/school_units/${id}`, { method: "DELETE" });
+
+      if (res.ok) {
+        // Remove do estado local para refletir a exclusão imediatamente na UI
+        setData((prev) => prev.filter((item) => item.id !== id));
+        // Fecha o diálogo de confirmação
+        setOpenDelete(false);
+        setDeletingId(null);
+        // Exibe feedback visual ao usuário: apenas toast (removido alert nativo)
+        toast.success("Unidade escolar excluída com sucesso.");
+      } else {
+        const text = await res.text();
+        toast.error("Falha ao excluir: " + text);
+      }
+    } catch (err) {
+      console.error("Erro ao chamar API DELETE:", err);
+      toast.error("Erro ao excluir unidade escolar. Tente novamente.");
+    }
+  }
+
+  // Definição das colunas da tabela (agora aqui dentro do componente)
+  // Mantemos os mesmos campos visuais, mas o campo `actions` passa a chamar
+  // a função `handleDelete` implementada acima.
+  const columns: ColumnDef<SchoolUnitRow>[] = [
+    {
+      id: "select",
+      header: ({ table }) => (
+        <div className="flex items-center justify-center">
+          <Checkbox
+            checked={
+              table.getIsAllPageRowsSelected() ||
+              (table.getIsSomePageRowsSelected() && "indeterminate")
+            }
+            onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+            aria-label="Select all"
+          />
+        </div>
+      ),
+      cell: ({ row }) => (
+        <div className="flex items-center justify-center">
+          <Checkbox
+            checked={row.getIsSelected()}
+            onCheckedChange={(value) => row.toggleSelected(!!value)}
+            aria-label="Select row"
+          />
+        </div>
+      ),
+      enableSorting: false,
+      enableHiding: false,
+    },
+    {
+      accessorKey: "nte",
+      header: "NTE",
+      cell: ({ row }) => (
+        <div className="w-full">
+          <Badge variant="outline" className="text-muted-foreground px-1.5">
+            {row.original.nte || "—"}
+          </Badge>
+        </div>
+      ),
+    },
+    {
+      accessorKey: "municipality",
+      header: "Municipio",
+      cell: ({ row }) => {
+        const isAssigned = row.original.municipality !== "Assign reviewer";
+
+        if (isAssigned) {
+          return row.original.municipality;
+        }
+
+        return (
+          <>
+            <Label htmlFor={`${row.original.id}-reviewer`} className="sr-only">
+              Reviewer
+            </Label>
+            <Select>
+              <SelectTrigger
+                className="w-38 **:data-[slot=select-value]:block **:data-[slot=select-value]:truncate"
+                size="sm"
+                id={`${row.original.id}-reviewer`}
+              >
+                <SelectValue placeholder="Assign reviewer" />
+              </SelectTrigger>
+              <SelectContent align="end">
+                <SelectItem value="Eddie Lake">Eddie Lake</SelectItem>
+                <SelectItem value="Jamik Tashpulatov">Jamik Tashpulatov</SelectItem>
+              </SelectContent>
+            </Select>
+          </>
+        );
+      },
+    },
+    {
+      accessorKey: "schoolUnit",
+      header: "Unidade Escolar",
+      cell: ({ row }) => {
+        return <TableCellViewer item={row.original} />;
+      },
+      enableHiding: false,
+    },
+    {
+      accessorKey: "sec_code",
+      header: () => <div className="w-full text-center">Código SEC</div>,
+      cell: ({ row }) => (
+        <div className="w-full text-center">{row.original.sec_code}</div>
+      ),
+    },
+    {
+      accessorKey: "typology",
+      header: () => <div className="w-full text-center">Tipologia</div>,
+      cell: ({ row }) => (
+        <div className="w-full flex justify-center">
+          <Badge variant="outline" className="text-muted-foreground px-1.5">
+            {row.original.typology}
+          </Badge>
+        </div>
+      ),
+    },
+    {
+      accessorKey: "status",
+      header: () => <div className="w-full text-center">Status</div>,
+      cell: ({ row }) => {
+        const code = String(row.original.status ?? "");
+        const isActive = code === "1";
+        const label = isActive ? "Ativo" : "Inativo";
+
+        return (
+          <div className="w-full flex justify-center">
+            <Badge
+              className={
+                isActive
+                  ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300 px-1.5"
+                  : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300 px-1.5"
+              }
+            >
+              {isActive ? (
+                <IconCircleCheckFilled className="size-4 inline mr-1 align-middle text-green-600 dark:text-green-300" />
+              ) : (
+                <IconLoader className="size-4 inline mr-1 align-middle text-red-600 dark:text-red-300" />
+              )}
+              {label}
+            </Badge>
+          </div>
+        );
+      },
+    },
+    {
+      id: "actions",
+      // Note: o `cell` aqui tem acesso ao `handleDelete` via closure.
+      cell: ({ row }) => (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              className="data-[state=open]:bg-muted text-muted-foreground flex size-8"
+              size="icon"
+            >
+              <IconDotsVertical />
+              <span className="sr-only">Open menu</span>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-32">
+            <DropdownMenuItem>
+              <SquarePen /> Edit
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            {/* Item de exclusão que chama `handleDelete` com o id numérico */}
+            <DropdownMenuItem
+              onClick={() => {
+                // Abre o diálogo de confirmação reutilizando o modal
+                // (sem excluir imediatamente). O botão de confirmação
+                // dentro do diálogo chamará `handleDelete`.
+                setDeletingId(Number(row.original.id));
+                setOpenDelete(true);
+              }}
+              className="text-destructive"
+            >
+              <Trash2 /> Delete
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      ),
+    },
+  ];
 
   // Mapa de rótulos das colunas para o menu de customização (em português)
   const columnLabelMap: Record<string, string> = {
@@ -393,6 +591,7 @@ export function SchoolUnitsDataTable({
   //   (botões para mover para cima/baixo, endpoint que persiste posição, etc.).
 
   return (
+    <>
     <Tabs
       defaultValue="outline"
       className="w-full flex-col justify-start gap-6"
@@ -467,6 +666,107 @@ export function SchoolUnitsDataTable({
                 })}
             </DropdownMenuContent>
           </DropdownMenu>
+          {/* Botão que abre o Sheet de filtros (lado direito) */}
+          <Sheet open={openSheet} onOpenChange={setOpenSheet}>
+            {/* Trigger: botão com ícone de filtro (lucide `Filter`) */}
+            <SheetTrigger asChild>
+              <Button variant="outline" size="sm" className="flex items-center gap-2">
+                <Filter />
+                <span className="hidden lg:inline">Filtros</span>
+              </Button>
+            </SheetTrigger>
+
+            {/* Conteúdo do Sheet: seções para NTE, Município, Unidade, Código e Status */}
+            <SheetContent side="right">
+              <SheetHeader>
+                <SheetTitle>Filtros avançados</SheetTitle>
+                <SheetDescription>Filtre por NTE, município, unidade, código e status.</SheetDescription>
+              </SheetHeader>
+
+              <div className="px-4 pb-4 flex flex-col gap-3">
+                {/*
+                  Linha de filtros: colocamos NTE e Município lado a lado.
+                  - Em telas amplas usamos uma grid de 3 colunas onde NTE ocupa
+                    2 colunas (`col-span-2`) e Município 1 coluna, dando mais
+                    espaço visual ao select de NTE conforme solicitado.
+                  - Em telas pequenas (mobile) a grid empilha automaticamente
+                    por causa de `grid-cols-1 sm:grid-cols-3`.
+                */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  {/* NTE: agora ocupa 1/3 do espaço */}
+                  <div className="sm:col-span-1">
+                    <Label htmlFor="sheet-nte" className="mb-1">NTE</Label>
+                    <Select value={filterNte} onValueChange={(v) => setFilterNte(v === "none" ? "" : v)}>
+                      <SelectTrigger id="sheet-nte" size="sm" className="w-full h-9">
+                        <SelectValue placeholder="Selecione NTE" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Nenhum</SelectItem>
+                        {nteOptions.map((n) => (
+                          <SelectItem key={n} value={n}>{n}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Município: agora ocupa 2/3 do espaço */}
+                  <div className="sm:col-span-2">
+                    <Label htmlFor="sheet-municipality" className="mb-1">Município</Label>
+                    <Select value={filterMunicipality} onValueChange={(v) => setFilterMunicipality(v === "none" ? "" : v)}>
+                      <SelectTrigger id="sheet-municipality" size="sm" className="w-full h-9">
+                        <SelectValue placeholder="Selecione município" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Nenhum</SelectItem>
+                        {municipalityOptions.map((m) => (
+                          <SelectItem key={m} value={m}>{m}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {/* Unidade escolar (texto) */}
+                <div>
+                  <Label htmlFor="sheet-schoolUnit" className="mb-2">Unidade Escolar</Label>
+                  <Input id="sheet-schoolUnit" className="w-full h-9" placeholder="Nome da unidade" value={filterSchoolUnit} onChange={(e) => setFilterSchoolUnit(e.target.value)} />
+                </div>
+
+                {/* Linha: Código SEC e Status lado a lado (Código SEC 1/3, Status 2/3) */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <div className="sm:col-span-1">
+                    <Label htmlFor="sheet-seccode" className="mb-1">Código SEC</Label>
+                    <Input id="sheet-seccode" className="w-full h-9" placeholder="Código SEC" value={filterSecCode} onChange={(e) => setFilterSecCode(e.target.value)} />
+                  </div>
+
+                  <div className="sm:col-span-2">
+                    <Label htmlFor="sheet-status" className="mb-1">Status</Label>
+                    <Select value={filterStatus} onValueChange={(v) => setFilterStatus(v)}>
+                      <SelectTrigger id="sheet-status" size="sm" className="w-full h-9">
+                        <SelectValue placeholder="Todos" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todos</SelectItem>
+                        <SelectItem value="1">Ativo</SelectItem>
+                        <SelectItem value="0">Inativo</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
+
+              <SheetFooter>
+                {/* Botões de ações: Limpar e Aplicar */}
+                <div className="flex w-full justify-between">
+                  <Button variant="ghost" onClick={() => clearFilters()}>Limpar</Button>
+                  <div className="flex gap-2">
+                    <Button variant="outline" onClick={() => setOpenSheet(false)}>Fechar</Button>
+                    <Button onClick={() => applyFilters()}>Aplicar</Button>
+                  </div>
+                </div>
+              </SheetFooter>
+            </SheetContent>
+          </Sheet>
           {/* Chama o Dialog de adicionar unidade escolar */}
           <AddSchoolUnitDialog onCreate={handleCreate} />
         </div>
@@ -475,6 +775,37 @@ export function SchoolUnitsDataTable({
         value="outline"
         className="relative flex flex-col gap-4 overflow-auto px-4 lg:px-6"
       >
+        {/* Barra de filtros ativos: mostra badges com cada filtro aplicado e botão para limpar */}
+                {columnFilters && columnFilters.length > 0 && (
+                  <div className="px-4 lg:px-6">
+                    <div className="flex flex-wrap items-center gap-2 mb-2">
+                      {columnFilters.map((f: any) => {
+                        const label = columnLabelMap[f.id] ?? f.id;
+                        let display = String(f.value);
+                        if (f.id === "status") {
+                          display = f.value === "1" ? "Ativo" : f.value === "0" ? "Inativo" : "Todos";
+                        }
+
+                        return (
+                          <Badge key={`${f.id}-${f.value}`} className="flex items-center gap-2">
+                            <span className="font-medium">{label}:</span>
+                            <span className="max-w-xs truncate">{display}</span>
+                            <button
+                              onClick={() => removeFilter(f.id)}
+                              aria-label={`Remover filtro ${label}`}
+                              className="ml-2 p-1 rounded hover:bg-muted"
+                            >
+                              <IconX className="w-3 h-3" />
+                            </button>
+                          </Badge>
+                        );
+                      })}
+
+                      <Button variant="ghost" size="sm" onClick={() => clearFilters()}>Limpar filtros</Button>
+                      <div role="status" aria-live="polite" className="sr-only">{columnFilters.length} filtro(s) ativo(s)</div>
+                    </div>
+                  </div>
+                )}
         <div className="overflow-hidden rounded-lg border">
             <Table>
               <TableHeader className="bg-muted sticky top-0 z-10">
@@ -621,6 +952,34 @@ export function SchoolUnitsDataTable({
         <div className="aspect-video w-full flex-1 rounded-lg border border-dashed"></div>
       </TabsContent>
     </Tabs>
+    {/* Diálogo reutilizável de confirmação de exclusão.
+        - Reaproveita o padrão de layout do modal de logout (título, texto e botões).
+        - `openDelete` controla visibilidade; ao confirmar chamamos `handleDelete`.
+    */}
+    <Dialog open={openDelete} onOpenChange={(v) => { if (!v) { setDeletingId(null); } setOpenDelete(v); }}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Confirmar exclusão</DialogTitle>
+        </DialogHeader>
+        <div className="text-sm text-muted-foreground">
+          Tem certeza que deseja excluir esta unidade escolar? Esta ação é irreversível.
+        </div>
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => { setOpenDelete(false); setDeletingId(null); }}>
+            Cancelar
+          </Button>
+          <Button
+            onClick={async () => {
+              // chama handleDelete com o id armazenado e fecha o modal
+              await handleDelete(deletingId);
+            }}
+          >
+            Excluir
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }
 
