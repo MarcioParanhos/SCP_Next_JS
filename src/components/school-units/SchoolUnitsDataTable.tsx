@@ -168,6 +168,43 @@ import {
 } from "@/components/ui/sheet";
 import AddSchoolUnitDialog from "./AddSchoolUnitDialog";
 
+// Tipo para representar um filtro ativo (usado para tipagem local)
+type FilterItem = { id: string; value: string };
+
+/**
+ * Hook simples para debouncing de valores.
+ * -- Uso: garante que atualizações rápidas de inputs não disparem ações
+ * imediatamente (útil para buscas/autocomplete).
+ */
+function useDebouncedValue<T>(value: T, delay = 300) {
+  const [debounced, setDebounced] = React.useState<T>(value);
+
+  React.useEffect(() => {
+    const id = setTimeout(() => setDebounced(value), delay);
+    return () => clearTimeout(id);
+  }, [value, delay]);
+
+  return debounced;
+}
+
+/**
+ * Componente reutilizável para exibir um badge de filtro com botão de fechar.
+ * - `label`: rótulo do filtro (ex: "NTE")
+ * - `value`: valor do filtro (ex: "Norte")
+ * - `onRemove`: callback para remoção do filtro
+ */
+function FilterBadge({ label, value, onRemove }: { label: string; value: string; onRemove: () => void }) {
+  return (
+    <Badge className="flex items-center gap-2">
+      <span className="font-medium">{label}:</span>
+      <span className="max-w-xs truncate">{value}</span>
+      <button onClick={onRemove} aria-label={`Remover filtro ${label}`} className="ml-2 p-1 rounded hover:bg-muted">
+        <IconX className="w-3 h-3" />
+      </button>
+    </Badge>
+  );
+}
+
 // Nota: As definições das colunas foram movidas para dentro do componente
 // `SchoolUnitsDataTable` para que possamos acessar o estado local (`setData`)
 // e implementar corretamente o handler de exclusão (`handleDelete`).
@@ -224,6 +261,7 @@ export function SchoolUnitsDataTable({
   const [filterSchoolUnit, setFilterSchoolUnit] = React.useState<string>("");
   const [filterSecCode, setFilterSecCode] = React.useState<string>("");
   const [filterStatus, setFilterStatus] = React.useState<string>("all");
+  const [filterTypology, setFilterTypology] = React.useState<string>("");
 
   // Gera opções simples a partir dos dados carregados atualmente
   // - Isso evita criar dependências adicionais para endpoints de busca.
@@ -233,8 +271,15 @@ export function SchoolUnitsDataTable({
   const municipalityOptions = Array.from(
     new Set(data.map((d) => d.municipality).filter(Boolean) as string[]),
   );
+  const typologyOptions = Array.from(
+    new Set(data.map((d) => d.typology).filter(Boolean) as string[]),
+  );
 
   // Aplica os filtros selecionados no Sheet para o TanStack Table
+  /**
+   * Aplica os filtros do Sheet ao estado `columnFilters` da tabela.
+   * Fecha o Sheet após aplicar.
+   */
   function applyFilters() {
     const newFilters: { id: string; value: string }[] = [];
 
@@ -242,25 +287,31 @@ export function SchoolUnitsDataTable({
     if (filterMunicipality && filterMunicipality !== "") newFilters.push({ id: "municipality", value: filterMunicipality });
     if (filterSchoolUnit && filterSchoolUnit.trim() !== "") newFilters.push({ id: "schoolUnit", value: filterSchoolUnit.trim() });
     if (filterSecCode && filterSecCode.trim() !== "") newFilters.push({ id: "sec_code", value: filterSecCode.trim() });
+    if (filterTypology && filterTypology !== "") newFilters.push({ id: "typology", value: filterTypology });
     if (filterStatus && filterStatus !== "all") newFilters.push({ id: "status", value: filterStatus });
 
-    // Define os filtros das colunas no estado da tabela
-    setColumnFilters(newFilters as any);
+    // Define os filtros das colunas no estado da tabela (tipado)
+    setColumnFilters(newFilters as ColumnFiltersState);
     // Fecha o Sheet após aplicar
     setOpenSheet(false);
   }
 
-  // Limpa filtros do Sheet e do estado da tabela
+  /**
+   * Limpa filtros do Sheet e sincroniza o estado da tabela.
+   */
   function clearFilters() {
     setFilterNte("");
     setFilterMunicipality("");
     setFilterSchoolUnit("");
     setFilterSecCode("");
+    setFilterTypology("");
     setFilterStatus("all");
     setColumnFilters([]);
   }
 
-  // Remove um filtro individual por id (ex: 'nte', 'municipality', 'status', ...)
+  /**
+   * Remove um filtro individual pelo `id` e sincroniza os estados do Sheet.
+   */
   function removeFilter(id: string) {
     // Remove do estado da tabela
     setColumnFilters((prev) => (prev as any[]).filter((f) => f.id !== id) as any);
@@ -275,6 +326,9 @@ export function SchoolUnitsDataTable({
         break;
       case "schoolUnit":
         setFilterSchoolUnit("");
+        break;
+      case "typology":
+        setFilterTypology("");
         break;
       case "sec_code":
         setFilterSecCode("");
@@ -303,6 +357,11 @@ export function SchoolUnitsDataTable({
   //   4) Exibe feedback ao usuário usando `toast` (sucesso ou erro).
   // - Comentários adicionais em português para facilitar manutenção.
   // -----------------------------------------------------------------------
+  /**
+   * Executa chamada ao endpoint DELETE para remover uma unidade escolar.
+   * Em caso de sucesso, atualiza o estado local e mostra toast de sucesso.
+   * Em caso de erro, tenta ler o JSON de erro e exibe mensagem apropriada.
+   */
   async function handleDelete(id: number | null) {
     // Se não houver id válido, nada a fazer
     if (id === null) return;
@@ -320,8 +379,15 @@ export function SchoolUnitsDataTable({
         // Exibe feedback visual ao usuário: apenas toast (removido alert nativo)
         toast.success("Unidade escolar excluída com sucesso.");
       } else {
-        const text = await res.text();
-        toast.error("Falha ao excluir: " + text);
+        // Tenta ler JSON com detalhe do erro, se houver
+        let detail = await res.text();
+        try {
+          const json = JSON.parse(detail);
+          detail = json?.error ?? json?.message ?? detail;
+        } catch (_) {
+          // mantém texto bruto
+        }
+        toast.error("Falha ao excluir: " + detail);
       }
     } catch (err) {
       console.error("Erro ao chamar API DELETE:", err);
@@ -332,7 +398,7 @@ export function SchoolUnitsDataTable({
   // Definição das colunas da tabela (agora aqui dentro do componente)
   // Mantemos os mesmos campos visuais, mas o campo `actions` passa a chamar
   // a função `handleDelete` implementada acima.
-  const columns: ColumnDef<SchoolUnitRow>[] = [
+  const columns: ColumnDef<SchoolUnitRow>[] = React.useMemo(() => [
     {
       id: "select",
       header: ({ table }) => (
@@ -493,7 +559,7 @@ export function SchoolUnitsDataTable({
         </DropdownMenu>
       ),
     },
-  ];
+  ], [handleDelete]);
 
   // Mapa de rótulos das colunas para o menu de customização (em português)
   const columnLabelMap: Record<string, string> = {
@@ -685,16 +751,11 @@ export function SchoolUnitsDataTable({
 
               <div className="px-4 pb-4 flex flex-col gap-3">
                 {/*
-                  Linha de filtros: colocamos NTE e Município lado a lado.
-                  - Em telas amplas usamos uma grid de 3 colunas onde NTE ocupa
-                    2 colunas (`col-span-2`) e Município 1 coluna, dando mais
-                    espaço visual ao select de NTE conforme solicitado.
-                  - Em telas pequenas (mobile) a grid empilha automaticamente
-                    por causa de `grid-cols-1 sm:grid-cols-3`.
+                  Layout atualizado: NTE e Município em linhas separadas,
+                  cada campo ocupa 100% da largura do painel de filtros.
                 */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                  {/* NTE: agora ocupa 1/3 do espaço */}
-                  <div className="sm:col-span-1">
+                <div className="grid grid-cols-1 gap-2">
+                  <div>
                     <Label htmlFor="sheet-nte" className="mb-1">NTE</Label>
                     <Select value={filterNte} onValueChange={(v) => setFilterNte(v === "none" ? "" : v)}>
                       <SelectTrigger id="sheet-nte" size="sm" className="w-full h-9">
@@ -709,8 +770,7 @@ export function SchoolUnitsDataTable({
                     </Select>
                   </div>
 
-                  {/* Município: agora ocupa 2/3 do espaço */}
-                  <div className="sm:col-span-2">
+                  <div>
                     <Label htmlFor="sheet-municipality" className="mb-1">Município</Label>
                     <Select value={filterMunicipality} onValueChange={(v) => setFilterMunicipality(v === "none" ? "" : v)}>
                       <SelectTrigger id="sheet-municipality" size="sm" className="w-full h-9">
@@ -730,6 +790,22 @@ export function SchoolUnitsDataTable({
                 <div>
                   <Label htmlFor="sheet-schoolUnit" className="mb-2">Unidade Escolar</Label>
                   <Input id="sheet-schoolUnit" className="w-full h-9" placeholder="Nome da unidade" value={filterSchoolUnit} onChange={(e) => setFilterSchoolUnit(e.target.value)} />
+                </div>
+
+                {/* Tipologia (select full width) */}
+                <div>
+                  <Label htmlFor="sheet-typology" className="mb-1">Tipologia</Label>
+                  <Select value={filterTypology} onValueChange={(v) => setFilterTypology(v === "none" ? "" : v)}>
+                    <SelectTrigger id="sheet-typology" size="sm" className="w-full h-9">
+                      <SelectValue placeholder="Selecione tipologia" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Nenhum</SelectItem>
+                      {typologyOptions.map((t) => (
+                        <SelectItem key={t} value={t}>{t}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 {/* Linha: Código SEC e Status lado a lado (Código SEC 1/3, Status 2/3) */}
@@ -779,7 +855,7 @@ export function SchoolUnitsDataTable({
                 {columnFilters && columnFilters.length > 0 && (
                   <div className="px-4 lg:px-6">
                     <div className="flex flex-wrap items-center gap-2 mb-2">
-                      {columnFilters.map((f: any) => {
+                      {(columnFilters as FilterItem[]).map((f) => {
                         const label = columnLabelMap[f.id] ?? f.id;
                         let display = String(f.value);
                         if (f.id === "status") {
@@ -787,17 +863,7 @@ export function SchoolUnitsDataTable({
                         }
 
                         return (
-                          <Badge key={`${f.id}-${f.value}`} className="flex items-center gap-2">
-                            <span className="font-medium">{label}:</span>
-                            <span className="max-w-xs truncate">{display}</span>
-                            <button
-                              onClick={() => removeFilter(f.id)}
-                              aria-label={`Remover filtro ${label}`}
-                              className="ml-2 p-1 rounded hover:bg-muted"
-                            >
-                              <IconX className="w-3 h-3" />
-                            </button>
-                          </Badge>
+                          <FilterBadge key={`${f.id}-${f.value}`} label={label} value={display} onRemove={() => removeFilter(f.id)} />
                         );
                       })}
 
