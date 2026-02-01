@@ -77,6 +77,7 @@ model SchoolUnit {
   id              Int          @id @default(autoincrement())
   name            String
   sec_cod         String       @map("sec_cod")
+  uo_code         String       @map("uo_code") @default("UNKNOWN")
   status          String       @default("1")
   typology_id     Int?
   typology        Typology?    @relation(fields: [typology_id], references: [id])

@@ -483,6 +483,14 @@ export function SchoolUnitsDataTable({
         <div className="w-full text-center">{row.original.sec_code}</div>
       ),
     },
+    // Coluna para exibir o Código UO (uo_code)
+    {
+      accessorKey: "uo_code",
+      header: () => <div className="w-full text-center">Código UO</div>,
+      cell: ({ row }) => (
+        <div className="w-full text-center">{(row.original as any).uo_code ?? "—"}</div>
+      ),
+    },
     {
       accessorKey: "typology",
       header: () => <div className="w-full text-center">Tipologia</div>,
@@ -568,6 +576,7 @@ export function SchoolUnitsDataTable({
     municipality: "Município",
     schoolUnit: "Unidade Escolar",
     sec_code: "Código SEC",
+    uo_code: "Código UO",
     typology: "Tipologia",
     status: "Status",
     limit: "Limit",

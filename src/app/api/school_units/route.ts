@@ -68,6 +68,8 @@ export async function GET(req: Request) {
         id: true,
         name: true,
         sec_cod: true,
+        // Inclui `uo_code` para expor o Código UO ao frontend
+        uo_code: true,
         status: true,
         // incluir apenas o `name` da tipologia e do NTE (evita trazer objetos inteiros)
         typology: { select: { name: true } },
@@ -84,6 +86,7 @@ export async function GET(req: Request) {
       id: s.id,
       schoolUnit: s.name,
       sec_code: s.sec_cod ?? "",
+      uo_code: (s as any).uo_code ?? "",
       typology: s.typology?.name ?? "",
       municipality: s.municipality?.name ?? "",
       nte: s.municipality?.nte?.name ?? "",
