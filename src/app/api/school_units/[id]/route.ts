@@ -46,3 +46,67 @@ export async function DELETE(
     return new NextResponse("Erro interno do servidor", { status: 500 });
   }
 }
+
+// Rota API: PUT /api/school_units/:id
+// Handler para atualizar uma unidade escolar existente.
+// Comentários / fluxo (em português):
+// - Recebe `id` pela rota dinâmica (params.id) e valida como número.
+// - Lê o JSON do corpo com os campos a atualizar (ex: schoolUnit, sec_code, status, municipality, typology).
+// - Constrói um objeto `data` contendo apenas os campos permitidos para update,
+//   conectando relações (municipality/typology) quando aplicável.
+// - Executa `prisma.schoolUnit.update` e retorna o DTO esperado pelo frontend.
+// - Em caso de erro, loga e retorna 500.
+export async function PUT(req: Request, { params }: { params: { id: string } }) {
+  try {
+    const id = Number(params.id);
+    if (Number.isNaN(id)) return new NextResponse("Invalid id", { status: 400 });
+
+    const payload = await req.json();
+
+    // Construir objeto de update reduzido (evitar mudanças indesejadas)
+    const data: any = {};
+    if (payload.schoolUnit !== undefined) data.name = payload.schoolUnit;
+    if (payload.sec_code !== undefined) data.sec_cod = payload.sec_code;
+    if (payload.status !== undefined) data.status = payload.status;
+
+    if (payload.municipality !== undefined && payload.municipality !== null && payload.municipality !== "") {
+      const municipalityId = Number(payload.municipality);
+      if (!Number.isNaN(municipalityId)) data.municipality = { connect: { id: municipalityId } };
+    }
+
+    // Tipologia: tentar conectar por id ou por nome (se informado)
+    if (payload.typology !== undefined && payload.typology !== null && payload.typology !== "") {
+      const maybeId = Number(payload.typology);
+      if (!Number.isNaN(maybeId)) {
+        data.typology = { connect: { id: maybeId } };
+      } else {
+        const typ = await prisma.typology.findFirst({ where: { name: String(payload.typology) } });
+        if (typ) data.typology = { connect: { id: typ.id } };
+      }
+    }
+
+    const updated = await prisma.schoolUnit.update({
+      where: { id },
+      data,
+      include: {
+        municipality: { select: { name: true, nte: { select: { name: true } } } },
+        typology: { select: { name: true } },
+      },
+    });
+
+    const dto = {
+      id: updated.id,
+      schoolUnit: updated.name,
+      sec_code: updated.sec_cod ?? "",
+      typology: updated.typology?.name ?? "",
+      municipality: updated.municipality?.name ?? "",
+      nte: updated.municipality?.nte?.name ?? "",
+      status: updated.status ?? "",
+    };
+
+    return NextResponse.json({ data: dto });
+  } catch (err) {
+    console.error(err);
+    return new NextResponse("Internal Server Error", { status: 500 });
+  }
+}

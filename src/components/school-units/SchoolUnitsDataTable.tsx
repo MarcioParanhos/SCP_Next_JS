@@ -104,6 +104,7 @@ import toast from "react-hot-toast";
 import { SchoolUnitRow } from "./schema";
 
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -231,6 +232,9 @@ export function SchoolUnitsDataTable({
 }: {
   data?: SchoolUnitRow[];
 }) {
+  // `router` permite navegação programática para a página de detalhe
+  // (usado no menu de ações da linha para abrir `/school_units/:id`).
+  const router = useRouter();
   // Estado local da tabela
   // - `data`: linhas atuais exibidas
   // - `loading`: estado de carregamento ao buscar via API
@@ -486,7 +490,7 @@ export function SchoolUnitsDataTable({
     // Coluna para exibir o Código UO (uo_code)
     {
       accessorKey: "uo_code",
-      header: () => <div className="w-full text-center">Código UO</div>,
+      header: () => <div className="w-full text-center">Código SAP</div>,
       cell: ({ row }) => (
         <div className="w-full text-center">{(row.original as any).uo_code ?? "—"}</div>
       ),
@@ -545,9 +549,14 @@ export function SchoolUnitsDataTable({
               <span className="sr-only">Open menu</span>
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-32">
-            <DropdownMenuItem>
-              <SquarePen /> Edit
+            <DropdownMenuContent align="end" className="w-32">
+            {/* Navegar para a página de detalhe da unidade
+                - Ao clicar em "Abrir" usamos `router.push` para ir para
+                  `/school_units/<id>` onde existe uma página que carrega
+                  os dados do servidor e exibe as abas (Informações, Editar, etc.)
+            */}
+            <DropdownMenuItem onClick={() => router.push(`/school_units/${row.original.id}`)}>
+              <SquarePen /> Abrir
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             {/* Item de exclusão que chama `handleDelete` com o id numérico */}

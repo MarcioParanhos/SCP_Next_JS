@@ -75,7 +75,11 @@ const data = {
       items: [
         {
           title: "Unidades Escolares",
-          url: "/unidades_escolares",
+          // Ajuste: usar a rota `/school_units` para ficar consistente com o
+          // roteamento da aplicação (`/school_units` e `/school_units/:id`).
+          // Assim `NavMain` detectará `pathname.startsWith('/school_units')`
+          // e abrirá o collapse 'GERENCIAMENTO' automaticamente.
+          url: "/school_units",
         },
         {
           title: "Servidores",
