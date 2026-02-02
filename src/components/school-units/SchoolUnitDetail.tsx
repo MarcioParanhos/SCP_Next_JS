@@ -6,6 +6,8 @@ import { Label } from "@/components/ui/label";
 // Estilos: usamos classes utilitárias e estilos do design system para
 // apresentar as informações em um layout mais profissional (cards, dl/dt/dd)
 import EditSchoolUnitForm from "./EditSchoolUnitForm";
+import HomologationForm from "./HomologationForm";
+import HomologationHistory from "./HomologationHistory";
 import { useRouter } from "next/navigation";
 
 // Componente cliente que exibe a página de detalhe/edição da unidade.
@@ -16,6 +18,8 @@ import { useRouter } from "next/navigation";
 export default function SchoolUnitDetail({ initialData }: { initialData: any }) {
   const [tab, setTab] = React.useState("info");
   const [data, setData] = React.useState(initialData);
+  // chave para forçar recarregar o histórico após uma ação
+  const [historyKey, setHistoryKey] = React.useState(0);
   const router = useRouter();
 
   return (
@@ -95,7 +99,15 @@ export default function SchoolUnitDetail({ initialData }: { initialData: any }) 
         {tab === "homologation" && (
           <section>
             <h2 className="text-lg font-semibold mb-2">Homologação</h2>
-            <div className="text-sm text-muted-foreground">Informações de homologação podem ser mostradas aqui.</div>
+            {/* Formulário para registrar homologação / deshomologação */}
+            <div className="mb-4">
+              <HomologationForm id={data.id} onSaved={() => setHistoryKey((k) => k + 1)} />
+            </div>
+
+            {/* Histórico de ações já executadas */}
+            <div>
+              <HomologationHistory key={historyKey} id={data.id} />
+            </div>
           </section>
         )}
 

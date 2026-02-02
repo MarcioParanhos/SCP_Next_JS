@@ -135,21 +135,29 @@ export async function POST(req: Request) {
       return new NextResponse("Invalid municipality id", { status: 400 });
     }
 
+    // Verifica se o município existe antes de conectar (evita erro de FK)
+    const municipalityExists = await prisma.municipality.findUnique({ where: { id: municipalityId } });
+    if (!municipalityExists) {
+      return new NextResponse("Municipality not found", { status: 400 });
+    }
+
     // 4) Resolver tipologia (aceitamos `typology` por id ou por nome)
     // - Caso o form envie um id (1, "2", etc.), conectamos por id.
     // - Caso envie um nome (ex: "SEDE"), tentamos buscar pela propriedade `name`.
     // - Não criamos tipologia automaticamente; apenas conectamos quando existir.
     let typologyConnect = undefined;
     if (payload.typology !== undefined && payload.typology !== null && payload.typology !== "") {
-      // tenta interpretar como id numérico
+      // tenta interpretar como id numérico e verifica existência
       const maybeId = Number(payload.typology);
       if (!Number.isNaN(maybeId)) {
-        typologyConnect = { connect: { id: maybeId } };
+        const typExists = await prisma.typology.findUnique({ where: { id: maybeId } });
+        if (typExists) typologyConnect = { connect: { id: maybeId } };
       } else {
+        // tenta achar pela propriedade `name`
         const typ = await prisma.typology.findFirst({ where: { name: String(payload.typology) } });
         if (typ) typologyConnect = { connect: { id: typ.id } };
       }
-      // Nota: se a tipologia não for encontrada por nome, optamos por ignorar a relação.
+      // Se não existir, ignoramos a relação em vez de falhar a criação.
     }
 
     // 5) Montar o objeto `data` para o Prisma create
