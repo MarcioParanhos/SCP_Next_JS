@@ -1,3 +1,5 @@
+"use client"
+
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { SidebarTrigger } from "@/components/ui/sidebar"
@@ -6,7 +8,7 @@ import { ThemeSelector } from "./theme-selector"
 // Breadcrumbs: componente cliente que mostra a navegação atual
 import Breadcrumbs from "@/components/ui/Breadcrumbs"
 
-export function SiteHeader() {
+export function SiteHeader({ showBreadcrumbs = true }: { showBreadcrumbs?: boolean }) {
   return (
     // Header compartilhado em todas as páginas.
     // - Inclui o `SidebarTrigger` (abre/fecha sidebar)
@@ -20,7 +22,7 @@ export function SiteHeader() {
           className="mx-2 data-[orientation=vertical]:h-4"
         />
         {/* Breadcrumbs: mostra a trilha de navegação atual */}
-        <Breadcrumbs />
+        {showBreadcrumbs && <Breadcrumbs />}
 
         <div className="ml-auto flex items-center gap-2">
           <ThemeSelector />

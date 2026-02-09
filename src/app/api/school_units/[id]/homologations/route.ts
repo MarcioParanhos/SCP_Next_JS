@@ -34,8 +34,21 @@ export async function POST(
     // Esperamos: { action: "HOMOLOGATED"|"UNHOMOLOGATED", reason?: string, performed_by?: string }
     const { action, reason, performed_by } = body;
 
+    // Validações básicas servidor-side para garantir integridade:
+    // - ação é obrigatória
+    // - se a ação for 'UNHOMOLOGATED', o motivo também deve ser informado
     if (!action) {
       return NextResponse.json({ error: "Campo 'action' é obrigatório" }, { status: 400 });
+    }
+
+    if (action === "UNHOMOLOGATED" && (!reason || reason.trim() === "")) {
+      return NextResponse.json({ error: "Motivo é obrigatório ao retirar homologação" }, { status: 400 });
+    }
+
+    // Certifica que a unidade existe antes de criar o registro
+    const unitExists = await prisma.schoolUnit.findUnique({ where: { id: unitId } });
+    if (!unitExists) {
+      return NextResponse.json({ error: "Unidade não encontrada" }, { status: 404 });
     }
 
     const record = await prisma.homologation.create({
