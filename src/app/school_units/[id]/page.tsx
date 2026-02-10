@@ -80,48 +80,79 @@ export default async function Page({ params }: { params: { id: string } }) {
                     Comentários em Português para orientar futuras alterações.
                   */}
                   <div className="p-6">
-                    <Card className="overflow-hidden">
-                      {/* Cabeçalho colorido com gradiente do tema */}
-                      <CardHeader className="bg-gradient-to-r from-primary/10 via-transparent to-transparent px-6 py-5">
-                        <div className="flex items-start justify-between w-full gap-4">
-                          <div>
-                            <CardTitle className="flex items-center gap-3 text-lg">
+                    <Card className="overflow-hidden shadow-sm hover:shadow-lg transition-shadow duration-200">
+                      {/* Barra de destaque à esquerda */}
+                      <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-primary to-secondary" />
+
+                      {/* Cabeçalho com avatar, título e badges */}
+                      <CardHeader className="relative px-6 py-6 bg-gradient-to-r from-primary/5 via-transparent to-transparent">
+                        <div className="flex items-center gap-4">
+                          {/* Avatar com iniciais da unidade */}
+                          <div className="flex-shrink-0">
+                            <div className="h-14 w-14 rounded-full bg-gradient-to-tr from-primary/40 to-secondary/40 flex items-center justify-center text-white font-semibold text-lg">
+                              {(() => {
+                                const initials = (unit.name || "").split(" ").map((n) => n[0] ?? "").join("").slice(0, 2).toUpperCase();
+                                return initials || "U";
+                              })()}
+                            </div>
+                          </div>
+
+                          <div className="flex-1">
+                            <CardTitle className="text-xl leading-tight flex items-center gap-3">
                               {unit.name}
-                              {/* Badge com status usando cores do tema */}
                               <Badge variant={unit.status === "1" ? "default" : "destructive"}>
                                 {unit.status === "1" ? "Ativa" : "Inativa"}
                               </Badge>
                             </CardTitle>
-                            <CardDescription className="mt-1">
-                              {/* Código SEC e UO exibidos com destaque */}
-                              <span className="text-sm text-muted-foreground">
-                                Código SEC: <span className="font-medium text-foreground">{unit.sec_cod}</span>
-                                {" • "}
-                                UO: <span className="font-medium text-foreground">{unit.uo_code}</span>
-                              </span>
+                            <CardDescription className="mt-1 text-sm text-muted-foreground">
+                              Código SEC: <span className="font-medium text-foreground">{unit.sec_cod}</span>
+                              {" • "}
+                              UO: <span className="font-medium text-foreground">{unit.uo_code}</span>
                             </CardDescription>
                           </div>
 
-                          {/* Espaço para ações futuras (botões) */}
                           <div className="flex items-center gap-2">
                             <Badge variant="secondary">{unit.municipality?.name ?? "-"}</Badge>
                           </div>
                         </div>
                       </CardHeader>
+
+                      {/* Conteúdo do cartão com blocos de informação e estatísticas */}
                       <CardContent>
-                        {/* Linha com município e tipologia com cores sutis */}
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                          <div className="rounded-md p-3 bg-gradient-to-b from-primary/5 to-transparent">
+                          <div className="rounded-lg p-4 bg-gradient-to-b from-primary/5 to-transparent border">
                             <div className="text-sm text-muted-foreground">Município</div>
-                            <div className="font-semibold text-foreground">{unit.municipality?.name ?? "-"}</div>
+                            <div className="mt-1 text-lg font-semibold text-foreground">{unit.municipality?.name ?? "-"}</div>
                           </div>
-                          <div className="rounded-md p-3 bg-gradient-to-b from-secondary/5 to-transparent">
+
+                          <div className="rounded-lg p-4 bg-gradient-to-b from-secondary/5 to-transparent border">
                             <div className="text-sm text-muted-foreground">Tipologia</div>
-                            <div className="font-semibold text-foreground">{unit.typology?.name ?? "-"}</div>
+                            <div className="mt-1 text-lg font-semibold text-foreground">{unit.typology?.name ?? "-"}</div>
                           </div>
-                          <div className="rounded-md p-3 bg-gradient-to-b from-accent/5 to-transparent">
+
+                          <div className="rounded-lg p-4 bg-gradient-to-b from-accent/5 to-transparent border">
                             <div className="text-sm text-muted-foreground">Status</div>
-                            <div className="font-semibold text-foreground">{unit.status}</div>
+                            <div className="mt-1 text-lg font-semibold text-foreground">{unit.status}</div>
+                          </div>
+                        </div>
+
+                        {/* Pequenas métricas ou informações auxiliares */}
+                        <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
+                          <div className="flex flex-col items-start p-3 rounded-md bg-surface/50">
+                            <div className="text-xs text-muted-foreground">ID</div>
+                            <div className="font-medium text-foreground">{unit.id}</div>
+                          </div>
+                          <div className="flex flex-col items-start p-3 rounded-md bg-surface/50">
+                            <div className="text-xs text-muted-foreground">SEC</div>
+                            <div className="font-medium text-foreground">{unit.sec_cod}</div>
+                          </div>
+                          <div className="flex flex-col items-start p-3 rounded-md bg-surface/50">
+                            <div className="text-xs text-muted-foreground">UO</div>
+                            <div className="font-medium text-foreground">{unit.uo_code}</div>
+                          </div>
+                          <div className="flex flex-col items-start p-3 rounded-md bg-surface/50">
+                            <div className="text-xs text-muted-foreground">Tipologia ID</div>
+                            <div className="font-medium text-foreground">{unit.typology_id ?? "-"}</div>
                           </div>
                         </div>
                       </CardContent>
