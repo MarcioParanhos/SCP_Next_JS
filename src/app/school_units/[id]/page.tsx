@@ -124,15 +124,18 @@ export default async function Page({ params }: { params: { id: string } }) {
 
                       {/* Conteúdo do cartão com blocos de informação e estatísticas */}
                       <CardContent>
+                        {/* Linha com Município e Tipologia lado a lado */}
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                          <div className="rounded-lg p-4 bg-gradient-to-b from-primary/5 to-transparent border">
-                            <div className="text-sm text-muted-foreground">Município</div>
-                            <div className="mt-1 text-lg font-semibold text-foreground">{unit.municipality?.name ?? "-"}</div>
-                          </div>
+                          <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="rounded-lg p-4 bg-gradient-to-b from-primary/5 to-transparent border">
+                              <div className="text-sm text-muted-foreground">Município</div>
+                              <div className="mt-1 text-lg font-semibold text-foreground">{unit.municipality?.name ?? "-"}</div>
+                            </div>
 
-                          <div className="rounded-lg p-4 bg-gradient-to-b from-secondary/5 to-transparent border">
-                            <div className="text-sm text-muted-foreground">Tipologia</div>
-                            <div className="mt-1 text-lg font-semibold text-foreground">{unit.typology?.name ?? "-"}</div>
+                            <div className="rounded-lg p-4 bg-gradient-to-b from-secondary/5 to-transparent border">
+                              <div className="text-sm text-muted-foreground">Tipologia</div>
+                              <div className="mt-1 text-lg font-semibold text-foreground">{unit.typology?.name ?? "-"}</div>
+                            </div>
                           </div>
 
                           <div className="rounded-lg p-4 bg-gradient-to-b from-accent/5 to-transparent border">
@@ -141,24 +144,26 @@ export default async function Page({ params }: { params: { id: string } }) {
                           </div>
                         </div>
 
-                        {/* Pequenas métricas ou informações auxiliares */}
-                        <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
-                          <div className="flex flex-col items-start p-3 rounded-md bg-surface/50">
-                            <div className="text-xs text-muted-foreground">ID</div>
-                            <div className="font-medium text-foreground">{unit.id}</div>
-                          </div>
-                          <div className="flex flex-col items-start p-3 rounded-md bg-surface/50">
-                            <div className="text-xs text-muted-foreground">SEC</div>
-                            <div className="font-medium text-foreground">{unit.sec_cod}</div>
-                          </div>
-                          <div className="flex flex-col items-start p-3 rounded-md bg-surface/50">
-                            <div className="text-xs text-muted-foreground">UO</div>
-                            <div className="font-medium text-foreground">{unit.uo_code}</div>
-                          </div>
-                          <div className="flex flex-col items-start p-3 rounded-md bg-surface/50">
-                            <div className="text-xs text-muted-foreground">Tipologia ID</div>
-                            <div className="font-medium text-foreground">{unit.typology_id ?? "-"}</div>
-                          </div>
+                        {/* Card separado contendo Código SEC e UO lado a lado */}
+                        <div className="mt-6">
+                          <Card className="p-0">
+                            <CardHeader className="px-6 py-3">
+                              <CardTitle className="text-sm">Códigos</CardTitle>
+                              <CardDescription className="text-xs text-muted-foreground">Identificadores da unidade</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="rounded-md p-4 bg-surface/50">
+                                  <div className="text-xs text-muted-foreground">Código SEC</div>
+                                  <div className="font-medium text-foreground">{unit.sec_cod}</div>
+                                </div>
+                                <div className="rounded-md p-4 bg-surface/50">
+                                  <div className="text-xs text-muted-foreground">Código UO</div>
+                                  <div className="font-medium text-foreground">{unit.uo_code}</div>
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
                         </div>
                       </CardContent>
                     </Card>
