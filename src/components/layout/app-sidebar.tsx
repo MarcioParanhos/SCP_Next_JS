@@ -1,22 +1,19 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import {
-  AudioWaveform,
   Building2,
   Cog,
   Command,
   Frame,
-  GalleryVerticalEnd,
   Map,
   PieChart,
   UserMinus,
   UserPlus,
-
 } from "lucide-react";
 
 import { NavMain } from "@/components/layout/nav-main";
-
 import { NavUser } from "@/components/layout/nav-user";
 import { useSession } from "next-auth/react";
 
@@ -30,8 +27,6 @@ import {
 
 // Dados de exemplo para a sidebar (usados como fallback se não houver sessão)
 const data = {
-  
- 
   navMain: [
     {
       title: "CARÊNCIA",
@@ -39,14 +34,8 @@ const data = {
       icon: UserMinus,
       isActive: true,
       items: [
-        {
-          title: "Incluir",
-          url: "#",
-        },
-        {
-          title: "Buscar",
-          url: "#",
-        },
+        { title: "Incluir", url: "#" },
+        { title: "Buscar", url: "#" },
       ],
     },
     {
@@ -54,18 +43,9 @@ const data = {
       url: "#",
       icon: UserPlus,
       items: [
-        {
-          title: "Incluir",
-          url: "#",
-        },
-        {
-          title: "Buscar",
-          url: "#",
-        },
-        {
-          title: "Reserva",
-          url: "#",
-        },
+        { title: "Incluir", url: "#" },
+        { title: "Buscar", url: "#" },
+        { title: "Reserva", url: "#" },
       ],
     },
     {
@@ -73,59 +53,27 @@ const data = {
       url: "#",
       icon: Building2,
       items: [
-        {
-          title: "Unidades Escolares",
-          // Ajuste: usar a rota `/school_units` para ficar consistente com o
-          // roteamento da aplicação (`/school_units` e `/school_units/:id`).
-          // Assim `NavMain` detectará `pathname.startsWith('/school_units')`
-          // e abrirá o collapse 'GERENCIAMENTO' automaticamente.
-          url: "/school_units",
-        },
-        {
-          title: "Servidores",
-          url: "#",
-        },
+        { title: "Unidades Escolares", url: "/school_units" },
+        { title: "Servidores", url: "#" },
       ],
     },
     {
       title: "CONFIGURAÇÕES",
       url: "#",
       icon: Cog,
-      items: [
-        {
-          title: "Listas Suspensas",
-          url: "#",
-        },
-      ],
+      items: [{ title: "Listas Suspensas", url: "#" }],
     },
     {
       title: "ADMINISTRAÇÃO",
       url: "#",
       icon: Command,
-      items: [
-        {
-          title: "Usuários",
-          url: "#",
-        },
-      ],
+      items: [{ title: "Usuários", url: "#" }],
     },
   ],
   projects: [
-    {
-      name: "Design Engineering",
-      url: "#",
-      icon: Frame,
-    },
-    {
-      name: "Sales & Marketing",
-      url: "#",
-      icon: PieChart,
-    },
-    {
-      name: "Travel",
-      url: "#",
-      icon: Map,
-    },
+    { name: "Design Engineering", url: "#", icon: Frame },
+    { name: "Sales & Marketing", url: "#", icon: PieChart },
+    { name: "Travel", url: "#", icon: Map },
   ],
 };
 
@@ -144,15 +92,25 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
   return (
     <Sidebar collapsible="icon" {...props}>
-      <SidebarHeader>{/* <TeamSwitcher teams={data.teams} /> */}</SidebarHeader>
+      <SidebarHeader>
+        <div className="px-3 py-4 group-data-[state=collapsed]:hidden">
+          <Link href="/">
+            <img src="/images/SCP.png" alt="SCP" className="h-32 w-auto mx-auto object-contain" />
+          </Link>
+        </div>
+      </SidebarHeader>
+
       <SidebarContent>
         <NavMain items={data.navMain} />
-        {/* <NavProjects projects={data.projects} /> */}
       </SidebarContent>
+
       <SidebarFooter>
         <NavUser user={userToShow} />
       </SidebarFooter>
+
       <SidebarRail />
     </Sidebar>
   );
 }
+
+export default AppSidebar;

@@ -12,10 +12,8 @@ import { prisma } from "@/lib/prisma";
  * - Trata o erro conhecido do Prisma quando o registro não existe (código P2025).
  * - Retorna respostas HTTP apropriadas (400, 404, 200, 500).
  */
-export async function DELETE(
-  req: Request,
-  { params }: { params: { id: string } },
-) {
+export async function DELETE(req: Request, context: any) {
+  const params = await context.params;
   try {
     // 1) Obter e validar o id recebido pela rota
     // O `params.id` vem como string (p.ex. "123"), então convertemos para número.
@@ -47,6 +45,34 @@ export async function DELETE(
   }
 }
 
+// Rota API: GET /api/school_units/:id
+// Retorna um DTO simplificado da unidade, usado por breadcrumbs e views leves.
+export async function GET(req: Request, context: any) {
+  const params = await context.params;
+  try {
+    const id = Number(params.id);
+    if (Number.isNaN(id)) return new NextResponse("Invalid id", { status: 400 });
+
+    const s = await prisma.schoolUnit.findUnique({
+      where: { id },
+      select: { id: true, name: true, sec_cod: true },
+    });
+
+    if (!s) return new NextResponse("Not found", { status: 404 });
+
+    const dto = {
+      id: s.id,
+      schoolUnit: s.name,
+      sec_code: s.sec_cod ?? "",
+    };
+
+    return NextResponse.json({ data: dto });
+  } catch (err) {
+    console.error(err);
+    return new NextResponse("Internal Server Error", { status: 500 });
+  }
+}
+
 // Rota API: PUT /api/school_units/:id
 // Handler para atualizar uma unidade escolar existente.
 // Comentários / fluxo (em português):
@@ -56,7 +82,8 @@ export async function DELETE(
 //   conectando relações (municipality/typology) quando aplicável.
 // - Executa `prisma.schoolUnit.update` e retorna o DTO esperado pelo frontend.
 // - Em caso de erro, loga e retorna 500.
-export async function PUT(req: Request, { params }: { params: { id: string } }) {
+export async function PUT(req: Request, context: any) {
+  const params = await context.params;
   try {
     const id = Number(params.id);
     if (Number.isNaN(id)) return new NextResponse("Invalid id", { status: 400 });
