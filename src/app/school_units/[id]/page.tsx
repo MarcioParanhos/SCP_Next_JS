@@ -4,7 +4,11 @@ import { SiteHeader } from "@/components/site-header";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { School } from "lucide-react";
+import Link from "next/link";
+import { Undo2 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
 
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
@@ -74,11 +78,22 @@ export default async function Page({ params }: { params: { id: string } }) {
         <div className="flex flex-1 flex-col p-8">
           <div className="max-w-6xl w-full mx-auto">
             <Tabs defaultValue="info">
-              <TabsList>
-                <TabsTrigger value="info">Informações Gerais</TabsTrigger>
-                <TabsTrigger value="homolog">Homologação</TabsTrigger>
-                <TabsTrigger value="history">Histórico</TabsTrigger>
-              </TabsList>
+              <div className="flex items-center justify-between">
+                <TabsList>
+                  <TabsTrigger value="info">Informações Gerais</TabsTrigger>
+                  <TabsTrigger value="homolog">Homologação</TabsTrigger>
+                  <TabsTrigger value="history">Histórico</TabsTrigger>
+                </TabsList>
+
+                {/* Botão de voltar no fim da linha das tabs */}
+                <div className="ml-4">
+                  <Link href="/school_units">
+                    <Button variant="default" size="icon" aria-label="Voltar">
+                      <Undo2 className="w-4 h-4" />
+                    </Button>
+                  </Link>
+                </div>
+              </div>
 
               <div className="mt-4 bg-background rounded-lg border">
                 <TabsContent value="info">
@@ -94,21 +109,14 @@ export default async function Page({ params }: { params: { id: string } }) {
                         <div className="flex items-center gap-4">
                           {/* Avatar com iniciais da unidade */}
                           <div className="flex-shrink-0">
-                            <div className="h-14 w-14 rounded-full bg-gradient-to-tr from-primary/40 to-secondary/40 flex items-center justify-center text-white font-semibold text-lg">
-                              {(() => {
-                                const initials = (unit.name || "").split(" ").map((n) => n[0] ?? "").join("").slice(0, 2).toUpperCase();
-                                return initials || "U";
-                              })()}
+                            <div className="h-14 w-14 rounded-full bg-primary flex items-center justify-center text-white">
+                              {/* Ícone da escola substituindo as iniciais */}
+                              <School className="h-6 w-6" />
                             </div>
                           </div>
 
                           <div className="flex-1">
-                            <CardTitle className="text-xl leading-tight flex items-center gap-3">
-                              {unit.name}
-                              <Badge variant={unit.status === "1" ? "default" : "destructive"}>
-                                {unit.status === "1" ? "Ativa" : "Inativa"}
-                              </Badge>
-                            </CardTitle>
+                            <CardTitle className="text-xl leading-tight">{unit.name}</CardTitle>
                             <CardDescription className="mt-1 text-sm text-muted-foreground">
                               Código SEC: <span className="font-medium text-foreground">{unit.sec_cod}</span>
                               {" • "}
@@ -116,9 +124,7 @@ export default async function Page({ params }: { params: { id: string } }) {
                             </CardDescription>
                           </div>
 
-                          <div className="flex items-center gap-2">
-                            <Badge variant="secondary">{unit.municipality?.name ?? "-"}</Badge>
-                          </div>
+                          
                         </div>
                       </CardHeader>
 
@@ -140,31 +146,11 @@ export default async function Page({ params }: { params: { id: string } }) {
 
                           <div className="rounded-lg p-4 bg-gradient-to-b from-accent/5 to-transparent border">
                             <div className="text-sm text-muted-foreground">Status</div>
-                            <div className="mt-1 text-lg font-semibold text-foreground">{unit.status}</div>
+                            <div className="mt-1 text-lg font-semibold text-foreground">{unit.status === "1" ? "Ativa" : "Inativa"}</div>
                           </div>
                         </div>
 
-                        {/* Card separado contendo Código SEC e UO lado a lado */}
-                        <div className="mt-6">
-                          <Card className="p-0">
-                            <CardHeader className="px-6 py-3">
-                              <CardTitle className="text-sm">Códigos</CardTitle>
-                              <CardDescription className="text-xs text-muted-foreground">Identificadores da unidade</CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="rounded-md p-4 bg-surface/50">
-                                  <div className="text-xs text-muted-foreground">Código SEC</div>
-                                  <div className="font-medium text-foreground">{unit.sec_cod}</div>
-                                </div>
-                                <div className="rounded-md p-4 bg-surface/50">
-                                  <div className="text-xs text-muted-foreground">Código UO</div>
-                                  <div className="font-medium text-foreground">{unit.uo_code}</div>
-                                </div>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        </div>
+                        {/* Códigos removidos conforme solicitado */}
                       </CardContent>
                     </Card>
                   </div>
