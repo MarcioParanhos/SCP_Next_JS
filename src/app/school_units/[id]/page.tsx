@@ -31,6 +31,13 @@ export default async function Page({ params }: { params: { id: string } }) {
     include: { municipality: true, typology: true },
   });
 
+  // Buscamos também os últimos registros de homologação para a aba de Histórico
+  const homologations = await prisma.homologation.findMany({
+    where: { school_unit_id: id },
+    orderBy: { createdAt: "desc" },
+    take: 20,
+  });
+
   // Se não existir, mostramos uma mensagem simples.
   if (!unit) {
     return (
@@ -81,8 +88,6 @@ export default async function Page({ params }: { params: { id: string } }) {
                   */}
                   <div className="p-6">
                     <Card className="overflow-hidden shadow-sm hover:shadow-lg transition-shadow duration-200">
-                      {/* Barra de destaque à esquerda */}
-                      <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-primary to-secondary" />
 
                       {/* Cabeçalho com avatar, título e badges */}
                       <CardHeader className="relative px-6 py-6 bg-gradient-to-r from-primary/5 via-transparent to-transparent">
@@ -160,10 +165,58 @@ export default async function Page({ params }: { params: { id: string } }) {
                   </div>
                 </TabsContent>
                 <TabsContent value="homolog">
-                  <div className="p-6 text-muted-foreground">Conteúdo de Homologação (vazio)</div>
+                  {/* Aba de Homologação: cartão com ação e informações resumidas */}
+                  <div className="p-6">
+                    <Card className="shadow-sm">
+                      <CardHeader className="px-6 py-4 bg-gradient-to-r from-primary/5 to-transparent">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <CardTitle>Homologação</CardTitle>
+                            <CardDescription className="text-sm text-muted-foreground">
+                              Ações de homologação podem ser iniciadas aqui. (placeholder)
+                            </CardDescription>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Badge variant="secondary">Última ação: {homologations[0]?.action ?? "-"}</Badge>
+                          </div>
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-sm text-muted-foreground">Aqui ficará o formulário de homologação quando for adicionado.</div>
+                      </CardContent>
+                    </Card>
+                  </div>
                 </TabsContent>
+
                 <TabsContent value="history">
-                  <div className="p-6 text-muted-foreground">Conteúdo de Histórico (vazio)</div>
+                  {/* Aba de Histórico: lista das últimas homologações */}
+                  <div className="p-6">
+                    <Card className="shadow-sm">
+                      <CardHeader className="px-6 py-4 bg-gradient-to-r from-primary/5 to-transparent">
+                        <CardTitle>Histórico de Homologações</CardTitle>
+                        <CardDescription className="text-sm text-muted-foreground">Últimas ações registradas</CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        {homologations.length === 0 ? (
+                          <div className="text-muted-foreground">Nenhuma homologação registrada.</div>
+                        ) : (
+                          <ul className="divide-y">
+                            {homologations.map((h) => (
+                              <li key={h.id} className="py-3">
+                                <div className="flex items-center justify-between">
+                                  <div>
+                                    <div className="font-medium">{h.action}</div>
+                                    <div className="text-xs text-muted-foreground">{h.reason ?? "Sem observação"}</div>
+                                  </div>
+                                  <div className="text-xs text-muted-foreground">{new Date(h.createdAt).toLocaleString()}</div>
+                                </div>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </div>
                 </TabsContent>
               </div>
             </Tabs>
