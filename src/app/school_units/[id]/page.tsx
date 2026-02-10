@@ -147,12 +147,12 @@ export default async function Page({ params }: { params: { id: string } }) {
 
                       {/*
                         Cabeçalho do cartão:
-                        - usamos um pequeno gradiente de fundo para destaque
-                        - avatar com ícone da escola (cor primária do tema)
-                        - título principal com o nome da unidade
-                        - descrição abaixo com Código SEC e UO
+                        - usamos uma cor sólida leve do tema (`bg-primary/5`) como
+                          fundo para que haja um bloco contínuo de cor atrás do
+                          nome da escola até a borda direita do card.
+                        - mantemos avatar e título por cima desse fundo.
                       */}
-                      <CardHeader className="relative px-6 py-6 bg-gradient-to-r from-primary/5 via-transparent to-transparent">
+                      <CardHeader className="relative px-6 py-6 bg-primary/5">
                         <div className="flex items-center gap-4">
                           {/* Avatar com ícone da escola */}
                           <div className="flex-shrink-0">
@@ -183,7 +183,7 @@ export default async function Page({ params }: { params: { id: string } }) {
                       <CardContent>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                           <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div className="rounded-lg p-4 bg-gradient-to-b from-primary/5 to-transparent border">
+                            <div className="rounded-lg p-4 border bg-transparent">
                               <div className="text-sm text-muted-foreground">Município</div>
                               <div className="mt-1 text-lg font-semibold text-foreground">{unit.municipality?.name ?? "-"}</div>
                             </div>
