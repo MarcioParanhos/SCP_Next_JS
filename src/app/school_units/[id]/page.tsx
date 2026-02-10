@@ -1,14 +1,19 @@
 import React from "react";
-import { AppSidebar } from "@/components/layout/app-sidebar";
-import { SiteHeader } from "@/components/site-header";
-import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
+
+// Componentes do layout e UI
+import { AppSidebar } from "@/components/layout/app-sidebar"; // barra lateral principal do dashboard
+import { SiteHeader } from "@/components/site-header"; // cabeçalho do site (usuário, pesquisa, etc)
+import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"; // provider para layout com sidebar inset
+
+// Componentes visuais reutilizáveis (Card, Tabs, Button, Badge)
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { School } from "lucide-react";
-import Link from "next/link";
-import { Undo2 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
+
+// Ícones e navegação
+import { School, Undo2 } from "lucide-react"; // ícone da escola e ícone de voltar (Undo2)
+import Link from "next/link"; // componente de link do Next.js (navegação entre rotas)
 
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
@@ -16,33 +21,41 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 
 export default async function Page({ params }: { params: { id: string } }) {
+  // Validação de sessão: usamos next-auth no servidor para verificar se o
+  // usuário está autenticado. Se não estiver, redirecionamos para a tela de login.
   const session = await getServerSession(authOptions as any);
   if (!session) redirect("/login");
 
-  // `params` can be a Promise in some Next.js versions/environments —
-  // await it before accessing properties to avoid sync-dynamic-apis errors.
-  const awaitedParams = await params as { id: string };
+  // Em algumas versões/ambientes do Next.js `params` pode ser uma Promise.
+  // Para evitar erros relacionados a uso síncrono de APIs dinâmicas, aguardamos
+  // (`await`) antes de acessar `params.id`.
+  const awaitedParams = (await params) as { id: string };
   const id = Number(awaitedParams.id);
   if (Number.isNaN(id)) return <div>Id inválido</div>;
 
-  // Página que mantém o layout do dashboard (sidebar + header) e exibe abas.
-  // Aqui buscamos os dados da unidade escolar via Prisma no servidor e
-  // mostramos um cartão com as Informações Gerais.
-
-  // Busca a unidade escolar no banco de dados pelo `id`.
+  // ================================================================
+  // Busca de dados no servidor (Prisma)
+  // - `unit`: entidade `schoolUnit` com relacionamento para município e tipologia
+  // - `homologations`: últimas homologações relacionadas à unidade
+  // Esses dados são obtidos no servidor para permitir renderização do lado do
+  // servidor (Server Component) e evitar fetches adicionais no cliente.
+  // ================================================================
   const unit = await prisma.schoolUnit.findUnique({
     where: { id },
     include: { municipality: true, typology: true },
   });
 
-  // Buscamos também os últimos registros de homologação para a aba de Histórico
   const homologations = await prisma.homologation.findMany({
     where: { school_unit_id: id },
     orderBy: { createdAt: "desc" },
     take: 20,
   });
 
-  // Se não existir, mostramos uma mensagem simples.
+  // ================================================================
+  // Caso a unidade não exista: renderizamos rapidamente a mesma estrutura de
+  // layout (sidebar + header) para manter consistência visual com o resto do
+  // dashboard, mas mostramos uma mensagem simples ao usuário.
+  // ================================================================
   if (!unit) {
     return (
       <SidebarProvider
@@ -63,6 +76,14 @@ export default async function Page({ params }: { params: { id: string } }) {
       </SidebarProvider>
     );
   }
+
+  // ================================================================
+  // Estrutura principal da página
+  // - `SidebarProvider` + `AppSidebar` mantém o layout do dashboard
+  // - `SiteHeader` exibe o cabeçalho com informações do usuário
+  // - Dentro do `SidebarInset` montamos o conteúdo principal com largura
+  //   controlada (`max-w-6xl`) para manter o conteúdo legível
+  // ================================================================
   return (
     <SidebarProvider
       style={
@@ -77,6 +98,13 @@ export default async function Page({ params }: { params: { id: string } }) {
         <SiteHeader />
         <div className="flex flex-1 flex-col p-8">
           <div className="max-w-6xl w-full mx-auto">
+
+            {/*
+              Abas superiores: usamos um componente `Tabs` para separar três
+              seções: Informações Gerais, Homologação e Histórico. O título das
+              abas é meramente visual aqui — o conteúdo de cada aba está abaixo
+              em `TabsContent`.
+            */}
             <Tabs defaultValue="info">
               <div className="flex items-center justify-between">
                 <TabsList>
@@ -85,7 +113,13 @@ export default async function Page({ params }: { params: { id: string } }) {
                   <TabsTrigger value="history">Histórico</TabsTrigger>
                 </TabsList>
 
-                {/* Botão de voltar no fim da linha das tabs */}
+                {/*
+                  Botão de voltar:
+                  - Só ícone (`Undo2`) para economia de espaço
+                  - Usa a variante `default` do `Button`, que aplica o fundo
+                    primário do tema (`bg-primary`) conforme `buttonVariants`
+                  - `aria-label` para acessibilidade já que não há texto
+                */}
                 <div className="ml-4">
                   <Link href="/school_units">
                     <Button variant="default" size="icon" aria-label="Voltar">
@@ -95,26 +129,39 @@ export default async function Page({ params }: { params: { id: string } }) {
                 </div>
               </div>
 
+              {/*
+                Container que envolve as abas e o conteúdo. Utilizamos
+                classes utilitárias para fundo, borda e cantos arredondados.
+              */}
               <div className="mt-4 bg-background rounded-lg border">
                 <TabsContent value="info">
                   {/*
-                    Cartão com as Informações Gerais da unidade escolar.
-                    Comentários em Português para orientar futuras alterações.
+                    Cartão principal com Informações Gerais da unidade escolar.
+                    Estrutura do Card:
+                    - `CardHeader`: avatar (ícone), título e descrição breve
+                    - `CardContent`: blocos de informação (Município, Tipologia,
+                      Status) dispostos em grid para responsividade
                   */}
                   <div className="p-6">
                     <Card className="overflow-hidden shadow-sm hover:shadow-lg transition-shadow duration-200">
 
-                      {/* Cabeçalho com avatar, título e badges */}
+                      {/*
+                        Cabeçalho do cartão:
+                        - usamos um pequeno gradiente de fundo para destaque
+                        - avatar com ícone da escola (cor primária do tema)
+                        - título principal com o nome da unidade
+                        - descrição abaixo com Código SEC e UO
+                      */}
                       <CardHeader className="relative px-6 py-6 bg-gradient-to-r from-primary/5 via-transparent to-transparent">
                         <div className="flex items-center gap-4">
-                          {/* Avatar com iniciais da unidade */}
+                          {/* Avatar com ícone da escola */}
                           <div className="flex-shrink-0">
                             <div className="h-14 w-14 rounded-full bg-primary flex items-center justify-center text-white">
-                              {/* Ícone da escola substituindo as iniciais */}
                               <School className="h-6 w-6" />
                             </div>
                           </div>
 
+                          {/* Título e descrição curta */}
                           <div className="flex-1">
                             <CardTitle className="text-xl leading-tight">{unit.name}</CardTitle>
                             <CardDescription className="mt-1 text-sm text-muted-foreground">
@@ -123,14 +170,17 @@ export default async function Page({ params }: { params: { id: string } }) {
                               UO: <span className="font-medium text-foreground">{unit.uo_code}</span>
                             </CardDescription>
                           </div>
-
-                          
                         </div>
                       </CardHeader>
 
-                      {/* Conteúdo do cartão com blocos de informação e estatísticas */}
+                      {/*
+                        Conteúdo do cartão:
+                        - Grid com três colunas em telas grandes: duas colunas
+                          para Município/Tipologia e uma para Status
+                        - Cada bloco é um cartão interno com leve gradiente e
+                          borda para dar profundidade visual
+                      */}
                       <CardContent>
-                        {/* Linha com Município e Tipologia lado a lado */}
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                           <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="rounded-lg p-4 bg-gradient-to-b from-primary/5 to-transparent border">
@@ -150,13 +200,19 @@ export default async function Page({ params }: { params: { id: string } }) {
                           </div>
                         </div>
 
-                        {/* Códigos removidos conforme solicitado */}
+                        {/* Códigos removidos conforme solicitação do usuário */}
                       </CardContent>
                     </Card>
                   </div>
                 </TabsContent>
+
+                {/*
+                  Aba de Homologação:
+                  - placeholder que indica onde o formulário de homologação
+                    será incluído se houver necessidade futura
+                  - o `Badge` à direita mostra a última ação registrada
+                */}
                 <TabsContent value="homolog">
-                  {/* Aba de Homologação: cartão com ação e informações resumidas */}
                   <div className="p-6">
                     <Card className="shadow-sm">
                       <CardHeader className="px-6 py-4 bg-gradient-to-r from-primary/5 to-transparent">
@@ -179,8 +235,12 @@ export default async function Page({ params }: { params: { id: string } }) {
                   </div>
                 </TabsContent>
 
+                {/*
+                  Aba de Histórico:
+                  - lista simples (server-rendered) das últimas homologações
+                  - cada item mostra ação, observação (reason) e timestamp
+                */}
                 <TabsContent value="history">
-                  {/* Aba de Histórico: lista das últimas homologações */}
                   <div className="p-6">
                     <Card className="shadow-sm">
                       <CardHeader className="px-6 py-4 bg-gradient-to-r from-primary/5 to-transparent">
