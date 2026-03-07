@@ -97,7 +97,7 @@ export default async function Page({ params }: { params: { id: string } }) {
       <SidebarInset>
         <SiteHeader />
         <div className="flex flex-1 flex-col p-8">
-          <div className="max-w-6xl w-full mx-auto">
+          <div className="w-full">
 
             {/*
               Abas superiores: usamos um componente `Tabs` para separar três
@@ -133,7 +133,7 @@ export default async function Page({ params }: { params: { id: string } }) {
                 Container que envolve as abas e o conteúdo. Utilizamos
                 classes utilitárias para fundo, borda e cantos arredondados.
               */}
-              <div className="mt-4 bg-background rounded-lg border">
+              <div className="mt-4 bg-background rounded-lg w-full">
                 <TabsContent value="info">
                   {/*
                     Cartão principal com Informações Gerais da unidade escolar.
@@ -142,8 +142,8 @@ export default async function Page({ params }: { params: { id: string } }) {
                     - `CardContent`: blocos de informação (Município, Tipologia,
                       Status) dispostos em grid para responsividade
                   */}
-                  <div className="p-6">
-                    <Card className="overflow-hidden shadow-sm hover:shadow-lg transition-shadow duration-200">
+                  <div>
+                    <Card className="w-full overflow-hidden shadow-sm hover:shadow-lg transition-shadow duration-200">
 
                       {/*
                         Cabeçalho do cartão:
@@ -213,8 +213,8 @@ export default async function Page({ params }: { params: { id: string } }) {
                   - o `Badge` à direita mostra a última ação registrada
                 */}
                 <TabsContent value="homolog">
-                  <div className="p-6">
-                    <Card className="shadow-sm">
+                  <div>
+                    <Card className="w-full shadow-sm">
                       <CardHeader className="px-6 py-4 bg-gradient-to-r from-primary/5 to-transparent">
                         <div className="flex items-center justify-between">
                           <div>
@@ -241,8 +241,8 @@ export default async function Page({ params }: { params: { id: string } }) {
                   - cada item mostra ação, observação (reason) e timestamp
                 */}
                 <TabsContent value="history">
-                  <div className="p-6">
-                    <Card className="shadow-sm">
+                  <div>
+                    <Card className="w-full shadow-sm">
                       <CardHeader className="px-6 py-4 bg-gradient-to-r from-primary/5 to-transparent">
                         <CardTitle>Histórico de Homologações</CardTitle>
                         <CardDescription className="text-sm text-muted-foreground">Últimas ações registradas</CardDescription>
