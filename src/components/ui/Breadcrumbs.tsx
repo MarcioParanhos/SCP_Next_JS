@@ -13,8 +13,10 @@ import {
 } from "./breadcrumb"
 
 // Mapa de segmentos para rótulos em Português
+// Rótulos dos segmentos do breadcrumb. Alteramos o rótulo vazio
+// para "Dashboard" para ficar consistente com o link alvo (/dashboard).
 const LABELS: Record<string, string> = {
-  "": "Início",
+  "": "Dashboard",
   dashboard: "Dashboard",
   school_units: "Unidades Escolares",
   carencia: "Carência",
@@ -54,7 +56,10 @@ export default function Breadcrumbs() {
   }, [segments])
 
   const items: Array<{ href: string; label: string }> = []
-  items.push({ href: "/", label: LABELS[""] })
+  // Faz com que o link "Início" aponte sempre para o Dashboard
+  // (em vez de "/" que pode levar à root pública). Isso garante
+  // comportamento consistente quando o usuário clica no breadcrumb.
+  items.push({ href: "/dashboard", label: LABELS[""] })
 
   let acc = ""
   segments.forEach((seg, idx) => {
@@ -64,6 +69,9 @@ export default function Breadcrumbs() {
       label = namesById[seg] ?? `Detalhe #${seg}`
     }
     if (seg === "school_units") label = LABELS["school_units"]
+    // Evita duplicar o link para /dashboard quando já adicionamos
+    // o item inicial apontando para /dashboard.
+    if (acc === "/dashboard" && items[0]?.href === "/dashboard") return
     items.push({ href: acc, label })
   })
 
