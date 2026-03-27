@@ -104,9 +104,7 @@ export function NavMain({
             <SidebarMenuItem>
               <CollapsibleTrigger asChild>
                 <SidebarMenuButton
-                  className={
-                    `cursor-pointer ${openGroup === item.title ? 'bg-primary text-primary-foreground hover:bg-primary/90 active:bg-primary/90' : ''}`
-                  }
+                  className={`cursor-pointer ${openGroup === item.title ? 'bg-primary text-primary-foreground hover:bg-primary/90 active:bg-primary/90' : ''}`}
                   tooltip={item.title}
                 >
                   {item.icon && <item.icon />}
@@ -119,6 +117,10 @@ export function NavMain({
                 <SidebarMenuSub>
                   {item.items?.map((subItem) => {
                     const isActiveSub = !!subItem.url && (pathname === subItem.url || pathname.startsWith(subItem.url));
+                    // indicador lateral menor para subitems quando ativos
+                    const subIndicator = isActiveSub
+                      ? "relative before:absolute before:inset-y-1 before:left-0 before:w-1 before:rounded-r-md before:bg-gradient-to-b before:from-primary before:to-primary/60 pl-3"
+                      : "";
                     return (
                       <SidebarMenuSubItem key={subItem.title}>
                         {/* VERIFICAÇÃO: Se o título for "Incluir", renderiza o Dialog */}
@@ -158,7 +160,7 @@ export function NavMain({
                           </Dialog>
                         ) : (
                           /* CASO CONTRÁRIO: Mantém o comportamento padrão de link */
-                          <SidebarMenuSubButton asChild>
+                          <SidebarMenuSubButton asChild isActive={isActiveSub} className={subIndicator}>
                             <Link href={subItem.url}>
                               <span>{subItem.title}</span>
                             </Link>

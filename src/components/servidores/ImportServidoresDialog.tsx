@@ -202,6 +202,9 @@ export function ImportServidoresDialog({
 
   // Referência ao input file oculto
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  // O input é mantido oculto e acionado pela área de upload; mantemos a
+  // referência para poder resetar o valor quando o usuário trocar de arquivo
+  // (isso permite re-selecionar o mesmo arquivo novamente).
 
   // -----------------------------------------------------------------------
   // handleOpenChange: limpa todo o estado ao fechar o dialog
@@ -268,6 +271,9 @@ export function ImportServidoresDialog({
 
       if (!res.ok) throw new Error("Falha na verificação");
 
+      // A API retorna um array `duplicateKeys` com chaves no formato
+      // "cpf|enrollment". Ex.: "05825957545|PENDING". Usamos esse set
+      // para marcar as linhas que já existem e devem ser ignoradas.
       const { duplicateKeys }: { duplicateKeys: string[] } = await res.json();
       // Conjunto de chaves compostas "cpf|enrollment" já existentes no banco
       const dupSet = new Set(duplicateKeys);
@@ -313,9 +319,11 @@ export function ImportServidoresDialog({
 
       if (!res.ok) throw new Error("Falha na importação");
 
+      // A resposta contém os registros criados no banco (com `id` e `createdAt`)
       const { created }: { created: ServidorRow[] } = await res.json();
 
-      // Notifica o componente pai com os registros criados
+      // Notifica o componente pai com os registros criados para que a UI
+      // principal (tabela) possa inserir imediatamente os novos itens.
       onImport?.(created);
       toast.success(`${created.length} servidor(es) importado(s) com sucesso.`);
       handleOpenChange(false);
@@ -336,6 +344,9 @@ export function ImportServidoresDialog({
   const PREVIEW_LIMIT = 20;
   const previewRows = rows.slice(0, PREVIEW_LIMIT);
   const hiddenCount = rows.length - previewRows.length;
+
+  // Observação: mesmo que mostremos apenas `PREVIEW_LIMIT` entradas, a
+  // importação processará todas as linhas (filtrando por status "novo").
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
