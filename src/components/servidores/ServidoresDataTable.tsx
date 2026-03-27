@@ -91,7 +91,9 @@ import { AddServidorForm } from "./AddServidorForm";
 import { ImportServidoresDialog } from "./ImportServidoresDialog";
 import { ServidorRow } from "./schema";
 
-// Renderiza uma linha com suporte a data-state=selected
+// Linha da tabela com suporte a estado "selecionado" (data-state=selected).
+// Mantida como componente separado para clareza e possível extensão futura
+// (ex.: suporte a drag-and-drop ou comportamentos específicos por linha).
 function DraggableRow({ row }: { row: Row<ServidorRow> }) {
   return (
     <TableRow data-state={row.getIsSelected() && "selected"}>
@@ -109,6 +111,14 @@ export function ServidoresDataTable({
 }: {
   data?: ServidorRow[];
 }) {
+  // Estados locais do componente:
+  // - `data`: lista de servidores exibida na tabela
+  // - `loading`: indicador de carregamento enquanto busca do backend
+  // - `sorting`, `columnFilters`, `columnVisibility`: estados usados pelo TanStack Table
+  // - `rowSelection`: linhas atualmente selecionadas
+  // - `pagination`: controle de paginação local (índice e tamanho de página)
+  // - `editingItem`: servidor atualmente em edição (abre dialog de edição)
+  // - `openDelete`/`deletingId`: controle do diálogo de confirmação de exclusão
   const [data, setData] = React.useState<ServidorRow[]>(() => initialData ?? []);
   const [loading, setLoading] = React.useState<boolean>(!initialData);
   const [sorting, setSorting] = React.useState<SortingState>([]);
@@ -120,6 +130,7 @@ export function ServidoresDataTable({
   const [openDelete, setOpenDelete] = React.useState(false);
   const [deletingId, setDeletingId] = React.useState<number | null>(null);
 
+  // Remove um servidor pelo ID chamando a rota DELETE e atualiza a UI
   async function handleDelete(id: number | null) {
     if (id === null) return;
     try {
@@ -140,21 +151,26 @@ export function ServidoresDataTable({
     }
   }
 
+  // Atualiza o item na lista após edição bem-sucedida
   function handleUpdate(updated: ServidorRow) {
     setData((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
     setEditingItem(null);
   }
 
+  // Insere um novo servidor no topo da lista (após criação)
   function handleCreate(item: ServidorRow) {
     setData((prev) => [item, ...prev]);
   }
 
-  // handleImport: insere todos os registros importados via CSV no topo da lista
+  // Handler chamado pelo diálogo de importação CSV
+  // Coloca os registros importados no topo para feedback imediato ao usuário
   function handleImport(imported: ServidorRow[]) {
     setData((prev) => [...imported, ...prev]);
   }
 
-  // Rotulos para o menu de personalizacao de colunas
+  // Rótulos amigáveis para o menu de personalização de colunas
+  // Usado para exibir nomes legíveis no DropdownMenu quando o usuário
+  // escolhe quais colunas mostrar/ocultar.
   const columnLabelMap: Record<string, string> = {
     select:        "Selecionar",
     name:          "Servidor",
@@ -166,6 +182,9 @@ export function ServidoresDataTable({
     actions:       "Acoes",
   };
 
+  // Definição das colunas para o TanStack Table.
+  // Cada coluna especifica como renderizar header e cell, e controla
+  // se pode ser ocultada ou ordenada.
   const columns: ColumnDef<ServidorRow>[] = React.useMemo(
     () => [
       // Coluna de selecao (checkbox)
@@ -306,6 +325,8 @@ export function ServidoresDataTable({
     []
   );
 
+  // Inicializa a instância da tabela com dados, colunas e os modelos
+  // de execução (filtros, paginação, ordenação, etc.).
   const table = useReactTable({
     data,
     columns,
@@ -325,7 +346,9 @@ export function ServidoresDataTable({
     getFacetedUniqueValues: getFacetedUniqueValues(),
   });
 
-  // Carrega todos os registros da API ao montar (paginacao por cursor)
+  // Efeito de montagem: carrega os servidores do backend se `initialData`
+  // não foi fornecido (caso SSR/SSG). Faz paginação por cursor para
+  // evitar sobrecarregar a API em listas grandes.
   React.useEffect(() => {
     if (initialData) return;
     let mounted = true;

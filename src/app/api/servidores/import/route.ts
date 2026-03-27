@@ -20,9 +20,12 @@ import { prisma } from "@/lib/prisma";
 
 export async function POST(req: Request) {
   try {
+    // Lê o corpo da requisição (JSON enviado pelo frontend)
+    // Esperamos algo como: { rows: [...], dryRun: boolean }
     const body = await req.json();
 
     // Extrai o array de linhas e o flag de modo preview
+    // Cada `row` representa uma linha do CSV já transformada em objeto
     const rows: {
       name: string;
       cpf: string;
@@ -33,7 +36,8 @@ export async function POST(req: Request) {
 
     const dryRun: boolean = body.dryRun === true;
 
-    // Nenhuma linha enviada: retorna resposta vazia imediatamente
+    // Se não houver linhas, respondemos rápido com o shape esperado pelo frontend
+    // (diferente dependendo se é dryRun ou import real)
     if (rows.length === 0) {
       return NextResponse.json(
         dryRun ? { duplicateKeys: [] } : { created: [], skippedCount: 0 }
@@ -41,29 +45,46 @@ export async function POST(req: Request) {
     }
 
     // Normaliza e filtra CPFs vazios antes de consultar o banco
+    // Fazemos trim() para remover espaços e ignoramos entradas sem CPF
     const cpfs = rows.map((r) => r.cpf?.trim()).filter(Boolean);
 
     // Busca todos os registros que tenham um dos CPFs do arquivo.
-    // Um mesmo CPF pode ter múltiplas matrículas (mesmo servidor, vínculos diferentes),
-    // por isso a duplicata é verificada pela combinação CPF + matrícula.
+    // Observação: um mesmo CPF pode ter várias matrículas, então não basta
+    // verificar apenas o CPF — precisamos da combinação CPF+matrícula.
     const existing = await prisma.employee.findMany({
       where: { cpf: { in: cpfs } },
       select: { cpf: true, enrollment: true },
     });
 
-    // Chave composta "cpf|enrollment" para identificar duplicatas com precisão
+    // Construímos um Set com chaves compostas no formato "CPF|MATRICULA"
+    // para buscar duplicatas em O(1). Isso evita criar novamente vínculos
+    // que já existem para um mesmo CPF com a mesma matrícula.
     const existingKeySet = new Set(
       existing.map((e) => `${e.cpf}|${e.enrollment}`)
     );
 
     // Função auxiliar: gera a chave composta de uma linha do CSV
+    // Garante trim() e usa "PENDING" quando matrícula estiver ausente
     const rowKey = (r: { cpf: string; enrollment: string }) =>
       `${r.cpf.trim()}|${(r.enrollment?.trim() || "PENDING")}`;
+
+    // Normaliza o regime de trabalho:
+    // - Remove espaços, converte para maiúsculas
+    // - Se o valor for apenas números (ex: "40"), adiciona "H" → "40H"
+    // - Se estiver vazio, devolve "UNKNOWN" como fallback
+    const normalizeWorkSchedule = (s?: string) => {
+      const v = (s ?? "").trim().toUpperCase();
+      if (!v) return "UNKNOWN";
+      if (/^\d+$/.test(v)) return `${v}H`;
+      return v;
+    };
 
     // ----------------------------------------------------------------
     // Modo verificação (dryRun=true): retorna as chaves duplicadas
     // sem fazer nenhuma alteração no banco de dados
     // ----------------------------------------------------------------
+    // --- Modo verificação (dryRun) ---
+    // Apenas retornamos as chaves que já existem no banco, sem inserir nada.
     if (dryRun) {
       const duplicateKeys = rows
         .filter((r) => r.cpf?.trim() && existingKeySet.has(rowKey(r)))
@@ -74,9 +95,11 @@ export async function POST(req: Request) {
     // ----------------------------------------------------------------
     // Modo importação: separa os registros novos dos duplicados
     // ----------------------------------------------------------------
+    // Filtra apenas as linhas novas que não estão na existingKeySet
     const toCreate = rows.filter(
       (r) => r.cpf?.trim() && !existingKeySet.has(rowKey(r))
     );
+    // Quantas linhas foram ignoradas por serem duplicatas
     const skippedCount = rows.length - toCreate.length;
 
     // Nenhum registro novo para criar
@@ -84,21 +107,24 @@ export async function POST(req: Request) {
       return NextResponse.json({ created: [], skippedCount });
     }
 
-    // Inserção em lote com createMany (muito mais eficiente que creates individuais)
-    // skipDuplicates=true como segurança extra contra condições de corrida
+    // Inserção em lote: mapeamos cada linha para o shape do banco,
+    // aplicando normalizações (trim, uppercase, regime com 'H').
+    // O `skipDuplicates: true` no createMany é uma camada extra de segurança
+    // para evitar duplicatas em situações de concorrência.
     await prisma.employee.createMany({
       data: toCreate.map((r) => ({
         name: r.name.trim(),
         cpf: r.cpf.trim(),
         enrollment: r.enrollment?.trim() || "PENDING",
         bond_type: r.bond_type.trim().toUpperCase(),
-        work_schedule: r.work_schedule.trim().toUpperCase(),
+        work_schedule: normalizeWorkSchedule(r.work_schedule),
       })),
       skipDuplicates: true,
     });
 
     // Busca os registros recém-criados para retornar ao frontend
-    // (createMany não retorna os dados criados no PostgreSQL)
+    // Observação: `createMany` no Postgres não retorna os objetos criados,
+    // por isso efetuamos uma nova query para obter os registros inseridos.
     const created = await prisma.employee.findMany({
       where: { cpf: { in: toCreate.map((r) => r.cpf.trim()) } },
       orderBy: { id: "desc" },
@@ -113,8 +139,9 @@ export async function POST(req: Request) {
       },
     });
 
+    // Retornamos os objetos criados (com datas serializadas) e a contagem
+    // de registros que foram ignorados por já existirem.
     return NextResponse.json({
-      // Serializa as datas para string ISO antes de enviar ao cliente
       created: created.map((e) => ({
         ...e,
         createdAt: e.createdAt.toISOString(),
@@ -122,6 +149,7 @@ export async function POST(req: Request) {
       skippedCount,
     });
   } catch (err) {
+    // Em caso de erro, logamos para debugar e retornamos 500 ao cliente.
     console.error("Error in POST /api/servidores/import:", err);
     return new NextResponse("Internal Server Error", { status: 500 });
   }
