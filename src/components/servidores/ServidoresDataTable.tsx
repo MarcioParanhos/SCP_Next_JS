@@ -88,6 +88,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 import AddServidorDialog from "./AddServidorDialog";
 import { AddServidorForm } from "./AddServidorForm";
+import { ImportServidoresDialog } from "./ImportServidoresDialog";
 import { ServidorRow } from "./schema";
 
 // Renderiza uma linha com suporte a data-state=selected
@@ -146,6 +147,11 @@ export function ServidoresDataTable({
 
   function handleCreate(item: ServidorRow) {
     setData((prev) => [item, ...prev]);
+  }
+
+  // handleImport: insere todos os registros importados via CSV no topo da lista
+  function handleImport(imported: ServidorRow[]) {
+    setData((prev) => [...imported, ...prev]);
   }
 
   // Rotulos para o menu de personalizacao de colunas
@@ -415,6 +421,9 @@ export function ServidoresDataTable({
                   })}
               </DropdownMenuContent>
             </DropdownMenu>
+
+            {/* Botão de importação CSV em massa */}
+            <ImportServidoresDialog onImport={handleImport} />
 
             <AddServidorDialog onCreate={handleCreate} />
           </div>
