@@ -106,6 +106,22 @@ model Typology {
   @@map("typologies")
 }
 
+// Model: Employee (Servidor)
+// Stores every public servant / teacher registered in the system.
+// Fields map 1-to-1 with the columns shown on the "Lista de Servidores" screen.
+model Employee {
+  id            Int      @id @default(autoincrement())
+  name          String                               // Full name of the employee
+  cpf           String                               // Brazilian CPF tax number
+  enrollment    String   @default("PENDING")         // Functional enrollment number (PENDING until assigned)
+  bond_type     String                               // Employment bond type (e.g. REDA, EFETIVO, DESIGNADO)
+  work_schedule String                               // Work schedule / shift (e.g. 20H, 40H, DE)
+  createdAt     DateTime @default(now())             // Record creation timestamp
+  updatedAt     DateTime @updatedAt                  // Last update timestamp (managed by Prisma)
+
+  @@map("employees") // Database table name
+}
+
 // Modelo para registrar ações de homologação/deshomologação
 // Cada registro representa uma ação executada sobre uma unidade escolar
 model Homologation {

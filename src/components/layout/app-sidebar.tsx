@@ -54,7 +54,7 @@ const data = {
       icon: Building2,
       items: [
         { title: "Unidades Escolares", url: "/school_units" },
-        { title: "Servidores", url: "#" },
+        { title: "Servidores", url: "/servidores" },
       ],
     },
     {
