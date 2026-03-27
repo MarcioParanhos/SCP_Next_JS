@@ -74,6 +74,10 @@ export async function GET(req: Request) {
         // incluir apenas o `name` da tipologia e do NTE (evita trazer objetos inteiros)
         typology: { select: { name: true } },
         municipality: { select: { name: true, nte: { select: { name: true } } } },
+        // Inclui apenas o registro mais recente de homologação para exibir o status na tabela
+        // - `take: 1` garante que apenas a última ação seja retornada
+        // - `orderBy: { createdAt: "desc" }` ordena do mais recente para o mais antigo
+        homologations: { select: { action: true }, orderBy: { createdAt: "desc" }, take: 1 },
       },
     });
 
@@ -91,6 +95,9 @@ export async function GET(req: Request) {
       municipality: s.municipality?.name ?? "",
       nte: s.municipality?.nte?.name ?? "",
       status: s.status ?? "",
+      // Última ação de homologação: pega o primeiro item do array (já ordenado desc)
+      // Retorna null quando não há nenhum registro de homologação para a unidade
+      homologationStatus: (s as any).homologations?.[0]?.action ?? null,
     }));
 
     // nextCursor: id do último item retornado (ou null)

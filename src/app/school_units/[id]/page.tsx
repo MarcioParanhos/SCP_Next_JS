@@ -19,6 +19,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { HomologationForm } from "@/components/school-units/HomologationForm";
 
 export default async function Page({ params }: { params: { id: string } }) {
   // Validação de sessão: usamos next-auth no servidor para verificar se o
@@ -45,11 +46,22 @@ export default async function Page({ params }: { params: { id: string } }) {
     include: { municipality: true, typology: true },
   });
 
+  // Busca as homologações incluindo os dados do usuário via FK (performedBy)
+  // - `performedBy` traz `name` e `email` diretamente da relação com User
+  // - Não é mais necessário enriquecimento manual via email; a FK resolve automaticamente
   const homologations = await prisma.homologation.findMany({
     where: { school_unit_id: id },
     orderBy: { createdAt: "desc" },
     take: 20,
+    include: { performedBy: { select: { name: true, email: true } } },
   });
+
+  // Normaliza os registros para o formato esperado pelo HomologationForm:
+  // - `performed_by`: usa o nome do usuário (via FK), com fallback para email
+  const enrichedHomologations = homologations.map((h) => ({
+    ...h,
+    performed_by: (h as any).performedBy?.name ?? (h as any).performedBy?.email ?? null,
+  }));
 
   // ================================================================
   // Caso a unidade não exista: renderizamos rapidamente a mesma estrutura de
@@ -181,8 +193,8 @@ export default async function Page({ params }: { params: { id: string } }) {
                           borda para dar profundidade visual
                       */}
                       <CardContent>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                          <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                          <div className="md:col-span-3 grid grid-cols-1 md:grid-cols-3 gap-6">
                             <div className="rounded-lg p-4 border bg-transparent">
                               <div className="text-sm text-muted-foreground">Município</div>
                               <div className="mt-1 text-lg font-semibold text-foreground">{unit.municipality?.name ?? "-"}</div>
@@ -192,15 +204,23 @@ export default async function Page({ params }: { params: { id: string } }) {
                               <div className="text-sm text-muted-foreground">Tipologia</div>
                               <div className="mt-1 text-lg font-semibold text-foreground">{unit.typology?.name ?? "-"}</div>
                             </div>
+
+                            <div className="rounded-lg p-4 bg-gradient-to-b from-accent/5 to-transparent border">
+                              <div className="text-sm text-muted-foreground">Status</div>
+                              <div className="mt-1 text-lg font-semibold text-foreground">{unit.status === "1" ? "Ativa" : "Inativa"}</div>
+                            </div>
                           </div>
 
-                          <div className="rounded-lg p-4 bg-gradient-to-b from-accent/5 to-transparent border">
-                            <div className="text-sm text-muted-foreground">Status</div>
-                            <div className="mt-1 text-lg font-semibold text-foreground">{unit.status === "1" ? "Ativa" : "Inativa"}</div>
+                          <div className={`rounded-lg p-4 border ${homologations[0]?.action === "HOMOLOGATED" ? "bg-emerald-500/10 border-emerald-500/30" : "bg-destructive/5 border-destructive/20"}`}>
+                            <div className="text-sm text-muted-foreground">Homologação</div>
+                            <div className={`mt-1 text-lg font-semibold ${homologations[0]?.action === "HOMOLOGATED" ? "text-emerald-600 dark:text-emerald-400" : "text-destructive"}`}>
+                              {homologations[0]?.action === "HOMOLOGATED" ? "Homologada" : "Não Homologada"}
+                            </div>
+                            {homologations[0]?.action === "UNHOMOLOGATED" && homologations[0]?.reason && (
+                              <div className="mt-1 text-xs text-muted-foreground line-clamp-2">{homologations[0].reason}</div>
+                            )}
                           </div>
                         </div>
-
-                        {/* Códigos removidos conforme solicitação do usuário */}
                       </CardContent>
                     </Card>
                   </div>
@@ -213,61 +233,36 @@ export default async function Page({ params }: { params: { id: string } }) {
                   - o `Badge` à direita mostra a última ação registrada
                 */}
                 <TabsContent value="homolog">
-                  <div>
-                    <Card className="w-full shadow-sm">
-                      <CardHeader className="px-6 py-4 bg-gradient-to-r from-primary/5 to-transparent">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <CardTitle>Homologação</CardTitle>
-                            <CardDescription className="text-sm text-muted-foreground">
-                              Ações de homologação podem ser iniciadas aqui. (placeholder)
-                            </CardDescription>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Badge variant="secondary">Última ação: {homologations[0]?.action ?? "-"}</Badge>
-                          </div>
-                        </div>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="text-sm text-muted-foreground">Aqui ficará o formulário de homologação quando for adicionado.</div>
-                      </CardContent>
-                    </Card>
-                  </div>
+                  {/*
+                    HomologationForm recebe a lista completa de homologações
+                    para exibir o histórico junto com as ações de homologar/retirar,
+                    centralizando tudo relacionado a homologação em uma única aba.
+                  */}
+                  <HomologationForm
+                    unitId={unit.id}
+                    lastAction={enrichedHomologations[0]?.action ?? null}
+                    performedBy={(session as any)?.user?.id ?? undefined}
+                    homologations={enrichedHomologations as any}
+                  />
                 </TabsContent>
 
                 {/*
                   Aba de Histórico:
-                  - lista simples (server-rendered) das últimas homologações
-                  - cada item mostra ação, observação (reason) e timestamp
+                  - Reservada para uso futuro (ex.: histórico de alterações, auditorias).
+                  - O histórico de homologações foi movido para a aba de Homologação.
                 */}
                 <TabsContent value="history">
-                  <div>
-                    <Card className="w-full shadow-sm">
-                      <CardHeader className="px-6 py-4 bg-gradient-to-r from-primary/5 to-transparent">
-                        <CardTitle>Histórico de Homologações</CardTitle>
-                        <CardDescription className="text-sm text-muted-foreground">Últimas ações registradas</CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                        {homologations.length === 0 ? (
-                          <div className="text-muted-foreground">Nenhuma homologação registrada.</div>
-                        ) : (
-                          <ul className="divide-y">
-                            {homologations.map((h) => (
-                              <li key={h.id} className="py-3">
-                                <div className="flex items-center justify-between">
-                                  <div>
-                                    <div className="font-medium">{h.action}</div>
-                                    <div className="text-xs text-muted-foreground">{h.reason ?? "Sem observação"}</div>
-                                  </div>
-                                  <div className="text-xs text-muted-foreground">{new Date(h.createdAt).toLocaleString()}</div>
-                                </div>
-                              </li>
-                            ))}
-                          </ul>
-                        )}
-                      </CardContent>
-                    </Card>
-                  </div>
+                  <Card className="w-full shadow-sm">
+                    <CardHeader className="px-6 py-4 bg-gradient-to-r from-primary/5 to-transparent">
+                      <CardTitle>Histórico</CardTitle>
+                      <CardDescription className="text-sm text-muted-foreground">
+                        Esta seção está reservada para histórico de alterações futuras.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-sm text-muted-foreground">Nenhum registro disponível.</div>
+                    </CardContent>
+                  </Card>
                 </TabsContent>
               </div>
             </Tabs>

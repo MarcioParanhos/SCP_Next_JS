@@ -14,5 +14,9 @@ export const schema = z.object({
   typology: z.string(),
   status: z.string(),
   limit: z.string(),
+  // Campo de status de homologação
+  // - Armazena a última ação registrada: "HOMOLOGATED" | "UNHOMOLOGATED" | null
+  // - Preenchido pela API com base no registro mais recente da tabela `homologations`
+  homologationStatus: z.string().nullable().optional(),
 });
 export type SchoolUnitRow = z.infer<typeof schema>;

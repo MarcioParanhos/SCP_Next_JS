@@ -2,8 +2,8 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
 // Rota para gerenciar homologações de uma unidade escolar
-// - GET: lista o histórico de homologações da unidade
-// - POST: cria um novo registro de homologação/deshomologação
+// - GET: lista o histórico de homologações da unidade (inclui dados do usuário via FK)
+// - POST: cria um novo registro de homologação/deshomologação usando FK para User
 
 export async function GET(
   request: Request,
@@ -14,6 +14,8 @@ export async function GET(
     const items = await prisma.homologation.findMany({
       where: { school_unit_id: unitId },
       orderBy: { createdAt: "desc" },
+      // Inclui os dados do usuário responsável via relação performedBy
+      include: { performedBy: { select: { name: true, email: true } } },
     });
 
     return NextResponse.json({ data: items });
@@ -31,8 +33,9 @@ export async function POST(
     const unitId = Number(params.id);
     const body = await request.json();
 
-    // Esperamos: { action: "HOMOLOGATED"|"UNHOMOLOGATED", reason?: string, performed_by?: string }
-    const { action, reason, performed_by } = body;
+    // Esperamos: { action: "HOMOLOGATED"|"UNHOMOLOGATED", reason?: string, performed_by_id?: string }
+    // - `performed_by_id`: ID do usuário logado (session.user.id) — chave estrangeira para User
+    const { action, reason, performed_by_id } = body;
 
     // Validações básicas servidor-side para garantir integridade:
     // - ação é obrigatória
@@ -55,9 +58,11 @@ export async function POST(
       data: {
         action,
         reason,
-        performed_by,
-        school_unit_id: unitId,
+        // Conecta via FK ao usuário quando o ID for fornecido
+        ...(performed_by_id ? { performedBy: { connect: { id: performed_by_id } } } : {}),
+        schoolUnit: { connect: { id: unitId } },
       },
+      include: { performedBy: { select: { name: true, email: true } } },
     });
 
     return NextResponse.json({ data: record }, { status: 201 });

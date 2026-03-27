@@ -210,6 +210,14 @@ function FilterBadge({ label, value, onRemove }: { label: string; value: string;
 // `SchoolUnitsDataTable` para que possamos acessar o estado local (`setData`)
 // e implementar corretamente o handler de exclusão (`handleDelete`).
 
+// -----------------------------------------------------------------------
+// Componente: DraggableRow
+// - Renderiza uma única linha da tabela com suporte a seleção visual.
+// - O nome "Draggable" é um remanescente do template original; a funcionalidade
+//   de arrastar foi removida — apenas a estrutura de linha foi mantida.
+// - Para reativar drag-and-drop no futuro, adicione um sensor do @dnd-kit aqui
+//   e envolva o <TableRow> com um contexto de sortable da lib.
+// -----------------------------------------------------------------------
 function DraggableRow({ row }: { row: Row<SchoolUnitRow> }) {
   // Renderizador de linha genérico
   // - Recebe um `Row<SchoolUnitRow>` do TanStack Table e itera sobre `row.getVisibleCells()`.
@@ -399,9 +407,15 @@ export function SchoolUnitsDataTable({
     }
   }
 
-  // Definição das colunas da tabela (agora aqui dentro do componente)
-  // Mantemos os mesmos campos visuais, mas o campo `actions` passa a chamar
-  // a função `handleDelete` implementada acima.
+  // -----------------------------------------------------------------------
+  // Definição das colunas da tabela
+  // - Cada coluna é um objeto `ColumnDef<SchoolUnitRow>` do TanStack Table.
+  // - `accessorKey`: nome do campo em `SchoolUnitRow` (schema.ts) que alimenta a coluna.
+  // - `header`: conteúdo do cabeçalho — pode ser string ou JSX para alinhar/formatar.
+  // - `cell`: renderizador da célula — recebe `row.original` com todos os dados da linha.
+  // - Para adicionar uma nova coluna: inclua o campo em `schema.ts`, atualize a API GET
+  //   (`src/app/api/school_units/route.ts`) para retorná-lo, e insira o ColumnDef abaixo.
+  // -----------------------------------------------------------------------
   const columns: ColumnDef<SchoolUnitRow>[] = React.useMemo(() => [
     {
       id: "select",
@@ -429,6 +443,8 @@ export function SchoolUnitsDataTable({
       enableSorting: false,
       enableHiding: false,
     },
+    // Coluna NTE: exibe o nome do NTE (Núcleo de Tecnologia Educacional) via badge outline.
+    // - Mostra "—" quando o campo está vazio.
     {
       accessorKey: "nte",
       header: "NTE",
@@ -440,6 +456,9 @@ export function SchoolUnitsDataTable({
         </div>
       ),
     },
+    // Coluna Município: exibe o município da unidade ou um Select placeholder para atribuição.
+    // - O bloco `isAssigned` é herança do template shadcn ("Assign reviewer") e pode ser
+    //   simplificado para apenas exibir o texto quando a lógica de atribuição não for necessária.
     {
       accessorKey: "municipality",
       header: "Municipio",
@@ -472,6 +491,11 @@ export function SchoolUnitsDataTable({
         );
       },
     },
+    // Coluna Unidade Escolar: renderiza o nome da unidade como link que abre o Drawer lateral.
+    // - `enableHiding: false` impede que esta coluna seja ocultada pelo menu de customização,
+    //   pois é a coluna principal de identificação.
+    // - O Drawer (`TableCellViewer`) exibe detalhes e um formulário — o conteúdo do formulário
+    //   ainda usa dados placeholder do template; substitua pelos campos reais quando necessário.
     {
       accessorKey: "schoolUnit",
       header: "Unidade Escolar",
@@ -480,6 +504,8 @@ export function SchoolUnitsDataTable({
       },
       enableHiding: false,
     },
+    // Coluna Código SEC: código de identificação da unidade no sistema SEC.
+    // - Centralizado via wrapper <div>.
     {
       accessorKey: "sec_code",
       header: () => <div className="w-full text-center">Código SEC</div>,
@@ -487,7 +513,9 @@ export function SchoolUnitsDataTable({
         <div className="w-full text-center">{row.original.sec_code}</div>
       ),
     },
-    // Coluna para exibir o Código UO (uo_code)
+    // Coluna Código SAP (uo_code): código da unidade orçamentária no sistema SAP.
+    // - Usa cast `as any` pois `uo_code` pode não estar tipado em todas as versões do schema.
+    //   Para remover o cast, adicione `uo_code?: string | null` em `SchoolUnitRow` (schema.ts).
     {
       accessorKey: "uo_code",
       header: () => <div className="w-full text-center">Código SAP</div>,
@@ -495,6 +523,7 @@ export function SchoolUnitsDataTable({
         <div className="w-full text-center">{(row.original as any).uo_code ?? "—"}</div>
       ),
     },
+    // Coluna Tipologia: categoria da unidade escolar (ex: CEJA, CEEP, CEC, etc.).
     {
       accessorKey: "typology",
       header: () => <div className="w-full text-center">Tipologia</div>,
@@ -505,6 +534,40 @@ export function SchoolUnitsDataTable({
           </Badge>
         </div>
       ),
+    },
+    // -----------------------------------------------------------------------
+    // Coluna: Homologação
+    // - Exibe o status de homologação da unidade escolar com cores diferenciadas:
+    //   * Verde (emerald): unidade homologada (HOMOLOGATED)
+    //   * Vermelho (destructive): homologação retirada (UNHOMOLOGATED)
+    //   * Cinza (muted): nenhum registro de homologação encontrado
+    // - O campo `homologationStatus` vem da API como a última ação registrada
+    //   na tabela `homologations` para aquela unidade.
+    // -----------------------------------------------------------------------
+    {
+      accessorKey: "homologationStatus",
+      header: () => <div className="w-full text-center">Homologação</div>,
+      cell: ({ row }) => {
+        const status = (row.original as any).homologationStatus as string | null;
+        const isHomologated = status === "HOMOLOGATED";
+        const isUnhomologated = status === "UNHOMOLOGATED";
+
+        return (
+          <div className="w-full flex justify-center">
+            <Badge
+              className={
+                isHomologated
+                  ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-300 px-1.5"
+                  : isUnhomologated
+                  ? "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300 px-1.5"
+                  : "bg-muted text-muted-foreground px-1.5"
+              }
+            >
+              {isHomologated ? "Homologada" : isUnhomologated ? "Não Homologada" : "—"}
+            </Badge>
+          </div>
+        );
+      },
     },
     {
       accessorKey: "status",
@@ -587,11 +650,16 @@ export function SchoolUnitsDataTable({
     sec_code: "Código SEC",
     uo_code: "Código UO",
     typology: "Tipologia",
+    // Rótulo da coluna de homologação exibido no menu de customização de colunas
+    homologationStatus: "Homologação",
     status: "Status",
     limit: "Limit",
     actions: "Ações",
   };
 
+  // Callback chamado pelo `AddSchoolUnitDialog` ao criar uma nova unidade com sucesso.
+  // - Insere o novo item no início do array `data` para que apareça imediatamente
+  //   na primeira linha da tabela sem precisar recarregar a página.
   const handleCreate = (item: SchoolUnitRow) => {
     setData((prev) => [item, ...prev])
   }
@@ -643,6 +711,18 @@ export function SchoolUnitsDataTable({
     };
   }, [initialData]);
 
+  // -----------------------------------------------------------------------
+  // Instância da tabela TanStack Table
+  // Plugins ativos:
+  //   - getCoreRowModel: modelo base de linhas (obrigatório)
+  //   - getFilteredRowModel: filtragem client-side via `columnFilters`
+  //   - getPaginationRowModel: paginação client-side via `pagination`
+  //   - getSortedRowModel: ordenação por coluna via `sorting`
+  //   - getFacetedRowModel / getFacetedUniqueValues: suporte a faceted filters
+  //     (útil futuramente para contagem de valores únicos por coluna no Sheet)
+  // Para migrar para server-side: remova os modelos acima e use
+  //   `manualPagination`, `manualSorting`, `manualFiltering` com fetch na API.
+  // -----------------------------------------------------------------------
   const table = useReactTable({
     data,
     columns,
@@ -1087,6 +1167,18 @@ const chartConfig = {
   },
 } satisfies ChartConfig;
 
+// -----------------------------------------------------------------------
+// Componente: TableCellViewer
+// - Exibe o nome da unidade escolar como botão de link na tabela.
+// - Ao clicar, abre um Drawer lateral (desktop) ou bottom sheet (mobile).
+// - ATENÇÃO: O gráfico de área (AreaChart) e o formulário interno ainda usam
+//   dados de placeholder do template shadcn/ui. Para produção:
+//   1) Substitua `chartData` por dados reais da unidade (ex: matrículas por mês).
+//   2) Atualize o formulário para campos reais ou remova-o (a edição principal
+//      já está na página `/school_units/[id]` com abas dedicadas).
+// - `useIsMobile()` vem do hook `src/hooks/use-mobile.ts` e determina a
+//   direção do Drawer (bottom em mobile, right em desktop).
+// -----------------------------------------------------------------------
 function TableCellViewer({ item }: { item: SchoolUnitRow }) {
   const isMobile = useIsMobile();
 
@@ -1097,12 +1189,14 @@ function TableCellViewer({ item }: { item: SchoolUnitRow }) {
           {item.schoolUnit}
         </Button>
       </DrawerTrigger>
-      {/* Viewer lateral que mostra detalhes da unidade ao clicar no nome */}
+      {/* Drawer lateral: abre ao clicar no nome da unidade na tabela.
+           TODO: Substituir conteúdo placeholder (gráfico + formulário) por
+                 dados reais da unidade ou remover em favor da página de detalhe. */}
       <DrawerContent>
         <DrawerHeader className="gap-1">
           <DrawerTitle>{item.schoolUnit}</DrawerTitle>
           <DrawerDescription>
-            Showing total visitors for the last 6 months
+            Detalhes da unidade escolar
           </DrawerDescription>
         </DrawerHeader>
         <div className="flex flex-col gap-4 overflow-y-auto px-4 text-sm">

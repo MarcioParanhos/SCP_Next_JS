@@ -16,6 +16,8 @@ model User {
   image         String?
   accounts      Account[]
   sessions      Session[]
+  // Relação inversa: homologações executadas por este usuário
+  homologations Homologation[]
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 }
@@ -107,13 +109,17 @@ model Typology {
 // Modelo para registrar ações de homologação/deshomologação
 // Cada registro representa uma ação executada sobre uma unidade escolar
 model Homologation {
-  id             Int        @id @default(autoincrement())
-  action         String // e.g. "HOMOLOGATED" | "UNHOMOLOGATED"
-  reason         String? // motivo/observação fornecida pelo usuário
-  performed_by   String? // id do usuário que executou a ação (opcional)
-  school_unit_id Int
-  schoolUnit     SchoolUnit @relation(fields: [school_unit_id], references: [id])
-  createdAt      DateTime   @default(now())
+  id               Int        @id @default(autoincrement())
+  action           String     // e.g. "HOMOLOGATED" | "UNHOMOLOGATED"
+  reason           String?    // motivo/observação fornecida pelo usuário
+  // Chave estrangeira para o usuário que executou a ação
+  // - Substituiu a coluna `performed_by` (que armazenava email como texto livre)
+  // - ON DELETE SET NULL: se o usuário for removido, o registro histórico permanece
+  performed_by_id  String?
+  performedBy      User?      @relation(fields: [performed_by_id], references: [id], onDelete: SetNull)
+  school_unit_id   Int
+  schoolUnit       SchoolUnit @relation(fields: [school_unit_id], references: [id])
+  createdAt        DateTime   @default(now())
 
   @@index([school_unit_id])
   @@map("homologations")
