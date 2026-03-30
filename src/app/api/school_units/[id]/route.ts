@@ -1,56 +1,13 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-// Rota API dinâmica: DELETE /api/school_units/:id
-// Comentários detalhados em português seguindo a solicitação do usuário.
+// Rota dinâmica: /api/school_units/[id]
+// Handlers implementados: GET, PUT, DELETE
 
-/**
- * DELETE handler
- * - Recebe `id` através dos `params` da rota dinâmica do Next.js.
- * - Valida o `id` recebido (deve ser numérico).
- * - Tenta remover a unidade escolar correspondente no banco via Prisma.
- * - Trata o erro conhecido do Prisma quando o registro não existe (código P2025).
- * - Retorna respostas HTTP apropriadas (400, 404, 200, 500).
- */
-export async function DELETE(req: Request, context: any) {
-  const params = await context.params;
+// GET: retorna dados básicos da unidade (usado para views leves / breadcrumbs)
+export async function GET(_req: Request, context: any) {
   try {
-    // 1) Obter e validar o id recebido pela rota
-    // O `params.id` vem como string (p.ex. "123"), então convertemos para número.
-    const id = Number(params.id);
-    if (Number.isNaN(id)) {
-      // Se o id não for um número válido, retornamos Bad Request (400)
-      return new NextResponse("ID inválido", { status: 400 });
-    }
-
-    // 2) Executar exclusão no banco usando Prisma
-    // - Aqui usamos `prisma.schoolUnit.delete` que irá lançar erro se o registro não existir.
-    await prisma.schoolUnit.delete({ where: { id } });
-
-    // 3) Retornar sucesso simples (200) para o cliente
-    return NextResponse.json({ ok: true });
-  } catch (err: any) {
-    // 4) Tratamento de erros
-    // - Prisma usa códigos de erro como 'P2025' quando o registro não é encontrado ao deletar.
-    // - Registramos o erro no servidor para fins de debug e retornamos status apropriado.
-    console.error("Erro ao deletar unidade escolar:", err);
-
-    if (err?.code === "P2025") {
-      // Registro não encontrado
-      return new NextResponse("Registro não encontrado", { status: 404 });
-    }
-
-    // Erro genérico do servidor
-    return new NextResponse("Erro interno do servidor", { status: 500 });
-  }
-}
-
-// Rota API: GET /api/school_units/:id
-// Retorna um DTO simplificado da unidade, usado por breadcrumbs e views leves.
-export async function GET(req: Request, context: any) {
-  const params = await context.params;
-  try {
-    const id = Number(params.id);
+    const id = Number(context.params?.id);
     if (Number.isNaN(id)) return new NextResponse("Invalid id", { status: 400 });
 
     const s = await prisma.schoolUnit.findUnique({
@@ -60,48 +17,45 @@ export async function GET(req: Request, context: any) {
 
     if (!s) return new NextResponse("Not found", { status: 404 });
 
-    const dto = {
-      id: s.id,
-      schoolUnit: s.name,
-      sec_code: s.sec_cod ?? "",
-    };
-
-    return NextResponse.json({ data: dto });
+    return NextResponse.json({ data: { id: s.id, schoolUnit: s.name, sec_code: s.sec_cod ?? "" } });
   } catch (err) {
-    console.error(err);
+    console.error("Error in GET /api/school_units/[id]:", err);
     return new NextResponse("Internal Server Error", { status: 500 });
   }
 }
 
-// Rota API: PUT /api/school_units/:id
-// Handler para atualizar uma unidade escolar existente.
-// Comentários / fluxo (em português):
-// - Recebe `id` pela rota dinâmica (params.id) e valida como número.
-// - Lê o JSON do corpo com os campos a atualizar (ex: schoolUnit, sec_code, status, municipality, typology).
-// - Constrói um objeto `data` contendo apenas os campos permitidos para update,
-//   conectando relações (municipality/typology) quando aplicável.
-// - Executa `prisma.schoolUnit.update` e retorna o DTO esperado pelo frontend.
-// - Em caso de erro, loga e retorna 500.
+// PUT: atualiza dados da unidade escolar
+// Comentários em português para servir como referência futura
 export async function PUT(req: Request, context: any) {
-  const params = await context.params;
   try {
-    const id = Number(params.id);
+    const id = Number(context.params?.id);
     if (Number.isNaN(id)) return new NextResponse("Invalid id", { status: 400 });
 
     const payload = await req.json();
 
-    // Construir objeto de update reduzido (evitar mudanças indesejadas)
+    // Monta objeto `data` contendo apenas os campos permitidos para atualização
+    // Aceitamos diferentes nomes de campos vindos do cliente (compatibilidade):
+    // - `schoolUnit` ou `name` → nome da unidade
+    // - `sec_code` ou `sec_cod` → código SEC
+    // - `uo_code` → código UO
+    // - `status` → status
     const data: any = {};
-    if (payload.schoolUnit !== undefined) data.name = payload.schoolUnit;
-    if (payload.sec_code !== undefined) data.sec_cod = payload.sec_code;
-    if (payload.status !== undefined) data.status = payload.status;
+    const nameValue = payload.schoolUnit ?? payload.name;
+    const secCodeValue = payload.sec_code ?? payload.sec_cod ?? payload.secCode;
+    const uoCodeValue = payload.uo_code ?? payload.uoCode;
+    if (nameValue !== undefined) data.name = String(nameValue).trim();
+    if (secCodeValue !== undefined) data.sec_cod = String(secCodeValue).trim();
+    if (uoCodeValue !== undefined) data.uo_code = String(uoCodeValue).trim();
+    if (payload.status !== undefined) data.status = String(payload.status).trim();
 
-    if (payload.municipality !== undefined && payload.municipality !== null && payload.municipality !== "") {
-      const municipalityId = Number(payload.municipality);
+    // Municipality: permite conectar por id quando fornecido
+    const municipalityField = payload.municipality ?? payload.municipalityId ?? payload.municipality_id;
+    if (municipalityField !== undefined && municipalityField !== null && municipalityField !== "") {
+      const municipalityId = Number(municipalityField);
       if (!Number.isNaN(municipalityId)) data.municipality = { connect: { id: municipalityId } };
     }
 
-    // Tipologia: tentar conectar por id ou por nome (se informado)
+    // Tipologia: aceita id numérico ou nome (tenta buscar por nome)
     if (payload.typology !== undefined && payload.typology !== null && payload.typology !== "") {
       const maybeId = Number(payload.typology);
       if (!Number.isNaN(maybeId)) {
@@ -132,8 +86,25 @@ export async function PUT(req: Request, context: any) {
     };
 
     return NextResponse.json({ data: dto });
-  } catch (err) {
-    console.error(err);
+  } catch (err: any) {
+    console.error("Error in PUT /api/school_units/[id]:", err);
+    if (err?.code === "P2025") return new NextResponse("Not found", { status: 404 });
+    return new NextResponse("Internal Server Error", { status: 500 });
+  }
+}
+
+// DELETE: remove a unidade escolar
+export async function DELETE(_req: Request, context: any) {
+  try {
+    const id = Number(context.params?.id);
+    if (Number.isNaN(id)) return new NextResponse("Invalid id", { status: 400 });
+
+    await prisma.schoolUnit.delete({ where: { id } });
+
+    return NextResponse.json({ ok: true });
+  } catch (err: any) {
+    console.error("Error in DELETE /api/school_units/[id]:", err);
+    if (err?.code === "P2025") return new NextResponse("Not found", { status: 404 });
     return new NextResponse("Internal Server Error", { status: 500 });
   }
 }

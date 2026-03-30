@@ -41,10 +41,19 @@ export default async function Page({ params }: { params: { id: string } }) {
   // Esses dados são obtidos no servidor para permitir renderização do lado do
   // servidor (Server Component) e evitar fetches adicionais no cliente.
   // ================================================================
+  // Buscar unidade incluindo município -> nte e tipologia para exibir detalhes
   const unit = await prisma.schoolUnit.findUnique({
     where: { id },
-    include: { municipality: true, typology: true },
+    include: { municipality: { include: { nte: true } }, typology: true },
   });
+
+  // Buscar listas de NTEs e Municípios para popular os selects no formulário de edição
+  const [ntes, municipalitiesList] = await Promise.all([
+    prisma.nte.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
+    prisma.municipality.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true, nte_id: true } }),
+  ]);
+  // Buscar tipologias para popular o select de Tipologia
+  const typologies = await prisma.typology.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } });
 
   // Busca as homologações incluindo os dados do usuário via FK (performedBy)
   // - `performedBy` traz `name` e `email` diretamente da relação com User
@@ -121,8 +130,10 @@ export default async function Page({ params }: { params: { id: string } }) {
               <div className="flex items-center justify-between">
                 <TabsList>
                   <TabsTrigger value="info">Informações Gerais</TabsTrigger>
-                  <TabsTrigger value="homolog">Homologação</TabsTrigger>
-                  <TabsTrigger value="history">Histórico</TabsTrigger>
+                    <TabsTrigger value="homolog">Homologação</TabsTrigger>
+                    <TabsTrigger value="history">Histórico</TabsTrigger>
+                    {/* Aba nova: Editar dados da unidade escolar */}
+                    <TabsTrigger value="edit">Editar</TabsTrigger>
                 </TabsList>
 
                 {/*
@@ -193,8 +204,13 @@ export default async function Page({ params }: { params: { id: string } }) {
                           borda para dar profundidade visual
                       */}
                       <CardContent>
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                          <div className="md:col-span-3 grid grid-cols-1 md:grid-cols-3 gap-6">
+                          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                          <div className="md:col-span-3 grid grid-cols-1 md:grid-cols-4 gap-6">
+                            <div className="rounded-lg p-4 border bg-transparent">
+                              <div className="text-sm text-muted-foreground">NTE</div>
+                              <div className="mt-1 text-lg font-semibold text-foreground">{unit.municipality?.nte?.name ?? "-"}</div>
+                            </div>
+
                             <div className="rounded-lg p-4 border bg-transparent">
                               <div className="text-sm text-muted-foreground">Município</div>
                               <div className="mt-1 text-lg font-semibold text-foreground">{unit.municipality?.name ?? "-"}</div>
@@ -221,6 +237,14 @@ export default async function Page({ params }: { params: { id: string } }) {
                             )}
                           </div>
                         </div>
+
+                        {/* Observações em linha separada abaixo do grid principal */}
+                        <div className="mt-4">
+                          <div className="rounded-lg p-4 border">
+                            <div className="text-sm text-muted-foreground">Observações</div>
+                            <div className="mt-1 text-sm text-foreground">{(unit as any).observations ?? (unit as any).note ?? "-"}</div>
+                          </div>
+                        </div>
                       </CardContent>
                     </Card>
                   </div>
@@ -244,6 +268,44 @@ export default async function Page({ params }: { params: { id: string } }) {
                     performedBy={(session as any)?.user?.id ?? undefined}
                     homologations={enrichedHomologations as any}
                   />
+                </TabsContent>
+
+                {/* Aba de Edição: formulário que permite alterar os dados básicos da unidade */}
+                <TabsContent value="edit">
+
+                    <Card className="w-full overflow-hidden shadow-sm hover:shadow-lg transition-shadow duration-200">
+                      {/* Cabeçalho do card com título e descrição, seguindo o padrão visual das outras abas */}
+                      <CardHeader className="px-6 py-4 bg-primary/5">
+                        <CardTitle>Editar Unidade</CardTitle>
+                        <CardDescription className="text-sm text-muted-foreground">
+                          Altere os dados básicos da unidade escolar. As mudanças serão salvas ao enviar o formulário.
+                        </CardDescription>
+                      </CardHeader>
+
+                      {/* Conteúdo do card: o formulário cliente é renderizado aqui */}
+                      <CardContent>
+                        {/* Importamos dinamicamente o componente cliente para edição */}
+                        {/* O componente cliente faz a chamada PUT para /api/school_units/[id] */}
+                        {/* @ts-ignore */}
+                        {React.createElement((await import("@/components/school-units/EditSchoolUnitForm")).default, {
+                          unitId: unit.id,
+                          defaultValues: {
+                            name: unit.name,
+                            sec_cod: unit.sec_cod,
+                            uo_code: unit.uo_code,
+                            status: unit.status,
+                          },
+                          // listas e valores iniciais para os selects dependentes (NTE -> Município)
+                          ntes: ntes,
+                          municipalities: municipalitiesList,
+                          typologies: typologies,
+                          defaultMunicipalityId: unit.municipality?.id ?? null,
+                          defaultNteId: unit.municipality?.nte?.id ?? null,
+                          defaultTypologyId: unit.typology?.id ?? null,
+                        })}
+                      </CardContent>
+                    </Card>
+                  
                 </TabsContent>
 
                 {/*
