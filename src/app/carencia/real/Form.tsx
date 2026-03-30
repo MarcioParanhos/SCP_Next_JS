@@ -26,6 +26,15 @@ export function RealCarenciaForm() {
   // cada item tem formato aproximado: { id, discipline, area, reason, startDate, morning, afternoon, night }
   // IDs são `Date.now()` no exemplo; em produção prefira UUIDs ou ids do banco.
   const [rows, setRows] = React.useState<Array<any>>([]);
+  // Observação sobre `rows` vs. campos de 'Dados da Carência':
+  // - `rows` representa linhas adicionais (múltiplas vagas) que o usuário pode
+  //   adicionar usando `addRow()` / `removeRow()`; cada linha possui seus próprios
+  //   quantitativos por turno (morning/afternoon/night).
+  // - O bloco principal de 'Dados da Carência' (variáveis `morningCount`,
+  //   `afternoonCount`, `nightCount` e `totalCount`) é um conjunto separado para
+  //   facilitar lançamentos rápidos de uma única vaga. Se quiser agregação entre
+  //   `rows` e o campo TOTAL, recomendamos manter uma rotina que reduza `rows`
+  //   somando seus quantitativos e atualize `totalCount` ou envie ambos ao backend.
 
   // Dados estáticos de exemplo para popular selects. Em integração real, buscar do servidor.
   // Mantidos localmente aqui para simplificar a UI durante o desenvolvimento.
@@ -39,6 +48,12 @@ export function RealCarenciaForm() {
   const [selectedArea, setSelectedArea] = React.useState<string>("");
   const [selectedMotive, setSelectedMotive] = React.useState<string>("");
   const [selectedDate, setSelectedDate] = React.useState<string>("");
+
+  // Quantitativos por turno (MAT / VESP / NOT) e total dinâmico
+  const [morningCount, setMorningCount] = React.useState<number>(0);
+  const [afternoonCount, setAfternoonCount] = React.useState<number>(0);
+  const [nightCount, setNightCount] = React.useState<number>(0);
+  const totalCount = React.useMemo(() => morningCount + afternoonCount + nightCount, [morningCount, afternoonCount, nightCount]);
 
   // Estados para seleção do servidor que gerou a carência
   // `servers`: lista simples carregada via API (página única)
@@ -55,7 +70,11 @@ export function RealCarenciaForm() {
   const [highlightedIndex, setHighlightedIndex] = React.useState<number>(-1);
   // controla se a lista está aberta (para cliques fora e foco)
   const [resultsOpen, setResultsOpen] = React.useState<boolean>(false);
+  // `resultsRef` aponta para o contêiner dos resultados da busca — usado para
+  // detectar cliques fora e manter o foco correto ao navegar por teclado.
   const resultsRef = React.useRef<HTMLDivElement | null>(null);
+  // `inputRef` é a referência do campo de busca; útil para foco programático
+  // e para integrar melhorias de acessibilidade/automação futuramente.
   const inputRef = React.useRef<HTMLInputElement | null>(null);
 
   // Efeito que carrega a listagem de unidades escolares ao montar o componente.
@@ -126,6 +145,9 @@ export function RealCarenciaForm() {
     let mounted = true;
     (async () => {
       // Se consulta vazia, não sobrescrevemos a lista já carregada (mantemos primeira página).
+      // Observação: aqui a busca é feita no servidor (`/api/servidores?q=...`) para
+      // escalar melhor quando tivermos milhares de servidores — o servidor já
+      // aplica ordenação/limite para resultados relevantes.
       if (debouncedServerQuery === "") return;
       try {
         setLoadingServers(true);
@@ -217,7 +239,10 @@ export function RealCarenciaForm() {
   return (
     <main className="p-8">
       <h1 className="text-2xl font-semibold">Carência Real</h1>
-      <p className="mt-2 text-muted-foreground">Preencha os dados abaixo seguindo o padrão dos formulários de gerenciamento.</p>
+
+      <div className="mt-3 text-sm text-muted-foreground">
+        <span className="font-medium">Observação:</span> Campos marcados com <span className="text-rose-500">*</span> são obrigatórios e devem ser preenchidos antes de preparar a carência.
+      </div>
 
       {isSelectedUnitHomologated && (
         <div className="mt-4">
@@ -245,7 +270,7 @@ export function RealCarenciaForm() {
             <div className="grid grid-cols-1 gap-4">
               <div>
                 {/* Select controlado que escolhe a unidade. Usamos `value=undefined` quando null para compatibilidade com o componente Select. */}
-                <Label className="mb-2">Unidade Escolar</Label>
+                <Label className="mb-2">Unidade Escolar <span className="text-rose-500">*</span></Label>
                 <Select value={selectedUnit ?? undefined} onValueChange={(v) => setSelectedUnit(v ?? null)}>
                   <SelectTrigger className="w-full">
                     {/* Placeholder que muda quando `loading` estiver true */}
@@ -298,7 +323,7 @@ export function RealCarenciaForm() {
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div>
                 {/* Disciplina: select que define a disciplina da vaga */}
-                <Label className="mb-2">Disciplina</Label>
+                <Label className="mb-2">Disciplina <span className="text-rose-500">*</span></Label>
                 <Select value={selectedDiscipline || undefined} onValueChange={(v) => setSelectedDiscipline(v ?? "")}>
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder="Selecione..." />
@@ -312,8 +337,8 @@ export function RealCarenciaForm() {
               </div>
 
               <div>
-                {/* Área: p.ex. Ensino Fundamental / Médio — campo opcional de categorização */}
-                <Label className="mb-2">Área</Label>
+                {/* Área: p.ex. Ensino Fundamental / Médio — campo obrigatório */}
+                <Label className="mb-2">Área <span className="text-rose-500">*</span></Label>
                 <Select value={selectedArea || undefined} onValueChange={(v) => setSelectedArea(v ?? "")}>
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder="Selecione..." />
@@ -328,7 +353,7 @@ export function RealCarenciaForm() {
 
               <div>
                 {/* Motivo da Carência: escolha entre substituição, licença, etc. */}
-                <Label className="mb-2">Motivo da Carência</Label>
+                <Label className="mb-2">Motivo da Carência <span className="text-rose-500">*</span></Label>
                 <Select value={selectedMotive || undefined} onValueChange={(v) => setSelectedMotive(v ?? "")}>
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder="Selecione..." />
@@ -343,8 +368,67 @@ export function RealCarenciaForm() {
 
               <div>
                 {/* Data de início da vaga: input tipo date controlado */}
-                <Label className="mb-2">Início da Vaga</Label>
+                <Label className="mb-2">Início da Vaga <span className="text-rose-500">*</span></Label>
                 <Input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} className="w-full" />
+              </div>
+            </div>
+
+            {/* Quantitativos por turno: inputs numéricos e total dinâmico */}
+            <div className="mt-4">
+              <div className="flex items-end gap-4">
+                <div className="flex flex-col items-center">
+                  <div className="text-xs text-muted-foreground mb-1">MAT</div>
+                  <Input
+                    type="number"
+                    min={0}
+                    step={1}
+                    inputMode="numeric"
+                    value={String(morningCount)}
+                    onChange={(e) => setMorningCount(Math.max(0, parseInt(e.target.value || '0') || 0))}
+                    onBlur={(e) => { const v = Math.max(0, parseInt(e.target.value || '0') || 0); if (v !== morningCount) setMorningCount(v); }}
+                    className="w-25 text-center py-1"
+                  />
+                </div>
+
+                <div className="flex flex-col items-center">
+                  <div className="text-xs text-muted-foreground mb-1">VESP</div>
+                  <Input
+                    type="number"
+                    min={0}
+                    step={1}
+                    inputMode="numeric"
+                    value={String(afternoonCount)}
+                    onChange={(e) => setAfternoonCount(Math.max(0, parseInt(e.target.value || '0') || 0))}
+                    onBlur={(e) => { const v = Math.max(0, parseInt(e.target.value || '0') || 0); if (v !== afternoonCount) setAfternoonCount(v); }}
+                    className="w-25 text-center py-1"
+                  />
+                </div>
+
+                <div className="flex flex-col items-center">
+                  <div className="text-xs text-muted-foreground mb-1">NOT</div>
+                  <Input
+                    type="number"
+                    min={0}
+                    step={1}
+                    inputMode="numeric"
+                    value={String(nightCount)}
+                    onChange={(e) => setNightCount(Math.max(0, parseInt(e.target.value || '0') || 0))}
+                    onBlur={(e) => { const v = Math.max(0, parseInt(e.target.value || '0') || 0); if (v !== nightCount) setNightCount(v); }}
+                    className="w-25 text-center py-1"
+                  />
+                </div>
+
+                <div className="flex flex-col items-center">
+                  <div className="text-xs text-muted-foreground mb-1">TOTAL</div>
+                   <Input
+                     type="number"
+                     readOnly
+                     min={0}
+                     value={totalCount}
+                     aria-label="Total solicitado"
+                     className="w-25 text-center py-1"
+                   />
+                </div>
               </div>
             </div>
           </CardContent>
@@ -381,28 +465,35 @@ export function RealCarenciaForm() {
                         onChange={(e) => { setServerQuery(e.target.value); setResultsOpen(true); }}
                         onFocus={() => { if (serverQuery.trim() !== "") setResultsOpen(true); }}
                         onKeyDown={(e) => {
-                          if (!resultsOpen) return;
-                          if (e.key === "ArrowDown") {
-                            e.preventDefault();
-                            setHighlightedIndex((i) => Math.min(i + 1, servers.length - 1));
-                          } else if (e.key === "ArrowUp") {
-                            e.preventDefault();
-                            setHighlightedIndex((i) => Math.max(i - 1, 0));
-                          } else if (e.key === "Enter") {
-                            e.preventDefault();
-                            const s = servers[highlightedIndex];
-                            if (s) {
-                              // guarda o servidor selecionado e limpa o campo de busca
-                              setSelectedServer(String(s.id));
-                              setSelectedServerData(s);
-                              setServerQuery("");
-                              setDebouncedServerQuery("");
-                              setServers([]);
+                            // Navegação por teclado na lista de resultados:
+                            // - ArrowDown / ArrowUp: altera o índice destacado (`highlightedIndex`).
+                            // - Enter: seleciona o item atualmente destacado (guarda em
+                            //   `selectedServer` / `selectedServerData`) e fecha a lista.
+                            // - Escape: fecha a lista sem selecionar.
+                            // O handler previne comportamento padrão para evitar que o
+                            // formulário seja submetido ao pressionar Enter aqui.
+                            if (!resultsOpen) return;
+                            if (e.key === "ArrowDown") {
+                              e.preventDefault();
+                              setHighlightedIndex((i) => Math.min(i + 1, servers.length - 1));
+                            } else if (e.key === "ArrowUp") {
+                              e.preventDefault();
+                              setHighlightedIndex((i) => Math.max(i - 1, 0));
+                            } else if (e.key === "Enter") {
+                              e.preventDefault();
+                              const s = servers[highlightedIndex];
+                              if (s) {
+                                // guarda o servidor selecionado e limpa o campo de busca
+                                setSelectedServer(String(s.id));
+                                setSelectedServerData(s);
+                                setServerQuery("");
+                                setDebouncedServerQuery("");
+                                setServers([]);
+                                setResultsOpen(false);
+                              }
+                            } else if (e.key === "Escape") {
                               setResultsOpen(false);
                             }
-                          } else if (e.key === "Escape") {
-                            setResultsOpen(false);
-                          }
                         }}
                         className="w-full md:w-1/2 max-w-xl rounded-md border pl-8 pr-2 py-1 text-sm"
                       />
