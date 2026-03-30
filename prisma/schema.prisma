@@ -8,18 +8,18 @@ generator client {
 }
 
 model User {
-  id            String    @id @default(cuid())
+  id            String         @id @default(cuid())
   name          String?
-  email         String?   @unique
+  email         String?        @unique
   emailVerified DateTime?
   password      String? // se usar Credentials (hash com bcrypt)
   image         String?
   accounts      Account[]
   sessions      Session[]
-  // Relação inversa: homologações executadas por este usuário
+  // Relação inversa: homologações realizadas por este usuário
   homologations Homologation[]
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
 }
 
 model Account {
@@ -85,7 +85,7 @@ model SchoolUnit {
   typology        Typology?      @relation(fields: [typology_id], references: [id])
   municipality_id Int
   municipality    Municipality   @relation(fields: [municipality_id], references: [id])
-  // Relação inversa para registrar as homologações relacionadas a esta unidade
+  // Relação inversa para registrar as homologações vinculadas a esta unidade
   homologations   Homologation[]
 
   @@map("school_units")
@@ -106,36 +106,36 @@ model Typology {
   @@map("typologies")
 }
 
-// Model: Employee (Servidor)
-// Stores every public servant / teacher registered in the system.
-// Fields map 1-to-1 with the columns shown on the "Lista de Servidores" screen.
+// Modelo: Employee (Servidor)
+// Armazena cada servidor público / professor registrado no sistema.
+// Os campos correspondem às colunas exibidas na tela "Lista de Servidores".
 model Employee {
   id            Int      @id @default(autoincrement())
-  name          String                               // Full name of the employee
-  cpf           String                               // Brazilian CPF tax number
-  enrollment    String   @default("PENDING")         // Functional enrollment number (PENDING until assigned)
-  bond_type     String                               // Employment bond type (e.g. REDA, EFETIVO, DESIGNADO)
-  work_schedule String                               // Work schedule / shift (e.g. 20H, 40H, DE)
-  createdAt     DateTime @default(now())             // Record creation timestamp
-  updatedAt     DateTime @updatedAt                  // Last update timestamp (managed by Prisma)
+  name          String // Nome completo do servidor
+  cpf           String // Número de CPF
+  enrollment    String   @default("PENDING") // Número de matrícula funcional (PENDING até atribuído)
+  bond_type     String // Tipo de vínculo (ex.: REDA, EFETIVO, DESIGNADO)
+  work_schedule String // Jornada de trabalho (ex.: 20H, 40H, DE)
+  createdAt     DateTime @default(now()) // Timestamp de criação do registro
+  updatedAt     DateTime @updatedAt // Timestamp da última atualização (gerenciado pelo Prisma)
 
-  @@map("employees") // Database table name
+  @@map("employees") // Nome da tabela no banco
 }
 
-// Modelo para registrar ações de homologação/deshomologação
+// Modelo para registrar ações de homologação / deshomologação
 // Cada registro representa uma ação executada sobre uma unidade escolar
 model Homologation {
-  id               Int        @id @default(autoincrement())
-  action           String     // e.g. "HOMOLOGATED" | "UNHOMOLOGATED"
-  reason           String?    // motivo/observação fornecida pelo usuário
+  id              Int        @id @default(autoincrement())
+  action          String // ex.: "HOMOLOGATED" | "UNHOMOLOGATED"
+  reason          String? // motivo/observação fornecida pelo usuário
   // Chave estrangeira para o usuário que executou a ação
-  // - Substituiu a coluna `performed_by` (que armazenava email como texto livre)
-  // - ON DELETE SET NULL: se o usuário for removido, o registro histórico permanece
-  performed_by_id  String?
-  performedBy      User?      @relation(fields: [performed_by_id], references: [id], onDelete: SetNull)
-  school_unit_id   Int
-  schoolUnit       SchoolUnit @relation(fields: [school_unit_id], references: [id])
-  createdAt        DateTime   @default(now())
+  // - Substituiu a coluna `performed_by` (antes armazenava email como texto livre)
+  // - ON DELETE SET NULL: se o usuário for removido, o histórico permanece
+  performed_by_id String?
+  performedBy     User?      @relation(fields: [performed_by_id], references: [id], onDelete: SetNull)
+  school_unit_id  Int
+  schoolUnit      SchoolUnit @relation(fields: [school_unit_id], references: [id])
+  createdAt       DateTime   @default(now())
 
   @@index([school_unit_id])
   @@map("homologations")
