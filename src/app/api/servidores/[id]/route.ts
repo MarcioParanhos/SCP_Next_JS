@@ -58,6 +58,23 @@ export async function PUT(req: Request, context: any) {
     if (bond_type !== undefined)     updateData.bond_type     = String(bond_type).trim();
     if (work_schedule !== undefined) updateData.work_schedule = String(work_schedule).trim();
 
+    // If attempting to change/set a concrete enrollment (not "PENDING"),
+    // ensure no other record already uses that enrollment.
+    if (updateData.enrollment && updateData.enrollment !== "PENDING") {
+      const existing = await prisma.employee.findFirst({
+        where: {
+          enrollment: updateData.enrollment,
+          NOT: { id },
+        },
+      });
+      if (existing) {
+        return new NextResponse(
+          JSON.stringify({ error: `Já existe outro servidor com a matrícula ${updateData.enrollment}.` }),
+          { status: 409, headers: { "Content-Type": "application/json" } }
+        );
+      }
+    }
+
     // Prisma automatically updates `updatedAt` on every update
     const updated = await prisma.employee.update({
       where: { id },

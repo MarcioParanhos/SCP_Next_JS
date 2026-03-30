@@ -93,12 +93,27 @@ export async function POST(req: Request) {
       );
     }
 
+    // Normalize enrollment value
+    const normalizedEnrollment = enrollment ? String(enrollment).trim() : "PENDING";
+
+    // If a concrete enrollment is provided (not the special "PENDING" placeholder),
+    // ensure no other record already uses the same enrollment.
+    if (normalizedEnrollment && normalizedEnrollment !== "PENDING") {
+      const existing = await prisma.employee.findFirst({ where: { enrollment: normalizedEnrollment } });
+      if (existing) {
+        return new NextResponse(
+          JSON.stringify({ error: `Já existe um servidor com a matrícula ${normalizedEnrollment}.` }),
+          { status: 409, headers: { "Content-Type": "application/json" } }
+        );
+      }
+    }
+
     const created = await prisma.employee.create({
       data: {
         name: String(name).trim(),
         cpf: String(cpf).trim(),
-        // Default to "PENDING" if enrollment is not provided
-        enrollment: enrollment ? String(enrollment).trim() : "PENDING",
+        // Keep the same convention: store "PENDING" when enrollment not provided
+        enrollment: normalizedEnrollment,
         bond_type: String(bond_type).trim(),
         work_schedule: String(work_schedule).trim(),
       },

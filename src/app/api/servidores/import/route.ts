@@ -56,6 +56,20 @@ export async function POST(req: Request) {
       select: { cpf: true, enrollment: true },
     });
 
+    // Além disso, consulte matrículas que já existem no banco (independentemente do CPF)
+    // para evitar que duas pessoas tenham a mesma matrícula.
+    const enrollments = rows.map((r) => r.enrollment?.trim()).filter(Boolean) as string[];
+    const existingEnrollments =
+      enrollments.length > 0
+        ? new Set(
+            (await prisma.employee.findMany({
+              where: { enrollment: { in: enrollments } },
+              select: { enrollment: true },
+            }))
+              .map((e) => e.enrollment)
+          )
+        : new Set<string>();
+
     // Construímos um Set com chaves compostas no formato "CPF|MATRICULA"
     // para buscar duplicatas em O(1). Isso evita criar novamente vínculos
     // que já existem para um mesmo CPF com a mesma matrícula.
@@ -89,16 +103,26 @@ export async function POST(req: Request) {
       const duplicateKeys = rows
         .filter((r) => r.cpf?.trim() && existingKeySet.has(rowKey(r)))
         .map((r) => rowKey(r));
-      return NextResponse.json({ duplicateKeys });
+      const duplicateEnrollments = rows
+        .map((r) => r.enrollment?.trim())
+        .filter(Boolean)
+        .filter((e) => existingEnrollments.has(e as string));
+      return NextResponse.json({ duplicateKeys, duplicateEnrollments });
     }
 
     // ----------------------------------------------------------------
     // Modo importação: separa os registros novos dos duplicados
     // ----------------------------------------------------------------
     // Filtra apenas as linhas novas que não estão na existingKeySet
-    const toCreate = rows.filter(
-      (r) => r.cpf?.trim() && !existingKeySet.has(rowKey(r))
-    );
+    // Exclui linhas que já existem por CPF+enrollment ou cujo enrollment já existe
+    const toCreate = rows.filter((r) => {
+      if (!r.cpf?.trim()) return false;
+      const key = rowKey(r);
+      const enrollmentVal = r.enrollment?.trim() || "PENDING";
+      if (existingKeySet.has(key)) return false;
+      if (enrollmentVal && enrollmentVal !== "PENDING" && existingEnrollments.has(enrollmentVal)) return false;
+      return true;
+    });
     // Quantas linhas foram ignoradas por serem duplicatas
     const skippedCount = rows.length - toCreate.length;
 
