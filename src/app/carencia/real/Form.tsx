@@ -2,7 +2,7 @@
 
 import React from "react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardAction } from "@/components/ui/card";
-import { CircleUserRound, X } from "lucide-react";
+import { CircleUserRound, X, Tag } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
@@ -26,15 +26,6 @@ export function RealCarenciaForm() {
   // cada item tem formato aproximado: { id, discipline, area, reason, startDate, morning, afternoon, night }
   // IDs são `Date.now()` no exemplo; em produção prefira UUIDs ou ids do banco.
   const [rows, setRows] = React.useState<Array<any>>([]);
-  // Observação sobre `rows` vs. campos de 'Dados da Carência':
-  // - `rows` representa linhas adicionais (múltiplas vagas) que o usuário pode
-  //   adicionar usando `addRow()` / `removeRow()`; cada linha possui seus próprios
-  //   quantitativos por turno (morning/afternoon/night).
-  // - O bloco principal de 'Dados da Carência' (variáveis `morningCount`,
-  //   `afternoonCount`, `nightCount` e `totalCount`) é um conjunto separado para
-  //   facilitar lançamentos rápidos de uma única vaga. Se quiser agregação entre
-  //   `rows` e o campo TOTAL, recomendamos manter uma rotina que reduza `rows`
-  //   somando seus quantitativos e atualize `totalCount` ou envie ambos ao backend.
 
   // Dados estáticos de exemplo para popular selects. Em integração real, buscar do servidor.
   // Mantidos localmente aqui para simplificar a UI durante o desenvolvimento.
@@ -54,6 +45,10 @@ export function RealCarenciaForm() {
   const [afternoonCount, setAfternoonCount] = React.useState<number>(0);
   const [nightCount, setNightCount] = React.useState<number>(0);
   const totalCount = React.useMemo(() => morningCount + afternoonCount + nightCount, [morningCount, afternoonCount, nightCount]);
+
+  // Tipo de carência selecionado (controla abas). Usamos a mesma base de form
+  // para todos os tipos — abas apenas alteram o 'tipo' que será enviado.
+  const [tipo, setTipo] = React.useState<string>("basica");
 
   // Estados para seleção do servidor que gerou a carência
   // `servers`: lista simples carregada via API (página única)
@@ -238,7 +233,17 @@ export function RealCarenciaForm() {
 
   return (
     <main className="p-8">
-      <h1 className="text-2xl font-semibold">Carência Real</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-semibold">Carência Real</h1>
+        <div aria-hidden className="ml-4 flex-shrink-0">
+          <div className="inline-flex items-center gap-2 rounded-md px-3 py-1 bg-primary text-primary-foreground shadow">
+            <Tag className="h-4 w-4" />
+            <span className="text-sm font-medium">
+              {tipo === 'basica' ? 'Educação Básica' : tipo === 'profissionalizante' ? 'Profissionalizante' : tipo === 'especial' ? 'Educação Especial' : 'EMITEC'}
+            </span>
+          </div>
+        </div>
+      </div>
 
       <div className="mt-3 text-sm text-muted-foreground">
         <span className="font-medium">Observação:</span> Campos marcados com <span className="text-rose-500">*</span> são obrigatórios e devem ser preenchidos antes de preparar a carência.
@@ -308,6 +313,40 @@ export function RealCarenciaForm() {
             )}
           </CardContent>
         </Card>
+
+          {/* Abas de Tipo de Carência: mesmo formulário será usado para todos os tipos */}
+          <div className="mb-4">
+            <div className="flex items-center justify-between">
+              <div className="inline-flex items-center rounded-full bg-muted px-1 py-1">
+                <button
+                  type="button"
+                  onClick={() => setTipo('basica')}
+                  className={`text-sm px-4 py-1 rounded-full transition-colors ${tipo === 'basica' ? 'bg-primary text-primary-foreground shadow' : 'text-muted-foreground hover:bg-muted/30'}`}>
+                  Educação Básica
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTipo('profissionalizante')}
+                  className={`ml-1 text-sm px-4 py-1 rounded-full transition-colors ${tipo === 'profissionalizante' ? 'bg-primary text-primary-foreground shadow' : 'text-muted-foreground hover:bg-muted/30'}`}>
+                  Profissionalizante
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTipo('especial')}
+                  className={`ml-1 text-sm px-4 py-1 rounded-full transition-colors ${tipo === 'especial' ? 'bg-primary text-primary-foreground shadow' : 'text-muted-foreground hover:bg-muted/30'}`}>
+                  Educação Especial
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTipo('emitec')}
+                  className={`ml-1 text-sm px-4 py-1 rounded-full transition-colors ${tipo === 'emitec' ? 'bg-primary text-primary-foreground shadow' : 'text-muted-foreground hover:bg-muted/30'}`}>
+                  EMITEC
+                </button>
+              </div>
+
+              
+            </div>
+          </div>
 
           {/* Card: Dados da Carência */}
         <Card>
@@ -465,35 +504,28 @@ export function RealCarenciaForm() {
                         onChange={(e) => { setServerQuery(e.target.value); setResultsOpen(true); }}
                         onFocus={() => { if (serverQuery.trim() !== "") setResultsOpen(true); }}
                         onKeyDown={(e) => {
-                            // Navegação por teclado na lista de resultados:
-                            // - ArrowDown / ArrowUp: altera o índice destacado (`highlightedIndex`).
-                            // - Enter: seleciona o item atualmente destacado (guarda em
-                            //   `selectedServer` / `selectedServerData`) e fecha a lista.
-                            // - Escape: fecha a lista sem selecionar.
-                            // O handler previne comportamento padrão para evitar que o
-                            // formulário seja submetido ao pressionar Enter aqui.
-                            if (!resultsOpen) return;
-                            if (e.key === "ArrowDown") {
-                              e.preventDefault();
-                              setHighlightedIndex((i) => Math.min(i + 1, servers.length - 1));
-                            } else if (e.key === "ArrowUp") {
-                              e.preventDefault();
-                              setHighlightedIndex((i) => Math.max(i - 1, 0));
-                            } else if (e.key === "Enter") {
-                              e.preventDefault();
-                              const s = servers[highlightedIndex];
-                              if (s) {
-                                // guarda o servidor selecionado e limpa o campo de busca
-                                setSelectedServer(String(s.id));
-                                setSelectedServerData(s);
-                                setServerQuery("");
-                                setDebouncedServerQuery("");
-                                setServers([]);
-                                setResultsOpen(false);
-                              }
-                            } else if (e.key === "Escape") {
+                          if (!resultsOpen) return;
+                          if (e.key === "ArrowDown") {
+                            e.preventDefault();
+                            setHighlightedIndex((i) => Math.min(i + 1, servers.length - 1));
+                          } else if (e.key === "ArrowUp") {
+                            e.preventDefault();
+                            setHighlightedIndex((i) => Math.max(i - 1, 0));
+                          } else if (e.key === "Enter") {
+                            e.preventDefault();
+                            const s = servers[highlightedIndex];
+                            if (s) {
+                              // guarda o servidor selecionado e limpa o campo de busca
+                              setSelectedServer(String(s.id));
+                              setSelectedServerData(s);
+                              setServerQuery("");
+                              setDebouncedServerQuery("");
+                              setServers([]);
                               setResultsOpen(false);
                             }
+                          } else if (e.key === "Escape") {
+                            setResultsOpen(false);
+                          }
                         }}
                         className="w-full md:w-1/2 max-w-xl rounded-md border pl-8 pr-2 py-1 text-sm"
                       />
