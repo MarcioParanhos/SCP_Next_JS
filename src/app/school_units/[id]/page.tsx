@@ -207,13 +207,13 @@ export default async function Page({ params }: { params: { id: string } }) {
                           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                           <div className="md:col-span-3 grid grid-cols-1 md:grid-cols-4 gap-6">
                             <div className="rounded-lg p-4 border bg-transparent">
-                              <div className="text-sm text-muted-foreground">NTE</div>
-                              <div className="mt-1 text-lg font-semibold text-foreground">{unit.municipality?.nte?.name ?? "-"}</div>
+                              <div className="text-sm text-muted-foreground">Município</div>
+                              <div className="mt-1 text-lg font-semibold text-foreground">{unit.municipality?.name ?? "-"}</div>
                             </div>
 
                             <div className="rounded-lg p-4 border bg-transparent">
-                              <div className="text-sm text-muted-foreground">Município</div>
-                              <div className="mt-1 text-lg font-semibold text-foreground">{unit.municipality?.name ?? "-"}</div>
+                              <div className="text-sm text-muted-foreground">NTE</div>
+                              <div className="mt-1 text-lg font-semibold text-foreground">{unit.municipality?.nte?.name ?? "-"}</div>
                             </div>
 
                             <div className="rounded-lg p-4 bg-gradient-to-b from-secondary/5 to-transparent border">

@@ -46,6 +46,7 @@ export function NavMain({
   }[];
 }) {
   const pathname = usePathname();
+  const isCarenciaRoute = pathname?.startsWith("/carencia");
   const [openGroup, setOpenGroup] = useState<string | null>(null);
 
   useEffect(() => {
@@ -103,14 +104,23 @@ export function NavMain({
           >
             <SidebarMenuItem>
               <CollapsibleTrigger asChild>
-                <SidebarMenuButton
-                  className={`cursor-pointer ${openGroup === item.title ? 'bg-primary text-primary-foreground hover:bg-primary/90 active:bg-primary/90' : ''}`}
-                  tooltip={item.title}
-                >
-                  {item.icon && <item.icon />}
-                  <span>{item.title}</span>
-                  <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
-                </SidebarMenuButton>
+                {(() => {
+                  const isActiveGroup = (!!item.url && item.url !== "#" && (pathname === item.url || pathname.startsWith(item.url)))
+                    || (!!item.items && item.items.some(sub => sub.url && sub.url !== "#" && (pathname === sub.url || pathname.startsWith(sub.url))))
+                    || (item.title === "CARÊNCIA" && pathname?.startsWith("/carencia"));
+
+                  return (
+                    <SidebarMenuButton
+                      isActive={isActiveGroup}
+                      className={`cursor-pointer ${isActiveGroup ? 'bg-primary text-primary-foreground hover:bg-primary/90 active:bg-primary/90' : ''}`}
+                      tooltip={item.title}
+                    >
+                      {item.icon && <item.icon />}
+                      <span>{item.title}</span>
+                      <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                    </SidebarMenuButton>
+                  )
+                })()}
               </CollapsibleTrigger>
               <CollapsibleContent>
                 {/* Botões do Sub-menu */}
@@ -121,13 +131,14 @@ export function NavMain({
                     const subIndicator = isActiveSub
                       ? "relative before:absolute before:inset-y-1 before:left-0 before:w-1 before:rounded-r-md before:bg-gradient-to-b before:from-primary before:to-primary/60 pl-3"
                       : "";
+                    const carenciaIndicator = "relative before:absolute before:inset-y-1 before:left-0 before:w-1 before:rounded-r-md before:bg-gradient-to-b before:from-primary before:to-primary/60 pl-3";
                     return (
                       <SidebarMenuSubItem key={subItem.title}>
                         {/* VERIFICAÇÃO: Se o título for "Incluir", renderiza o Dialog */}
                         {subItem.title === "Incluir" ? (
                           <Dialog>
                             <DialogTrigger asChild>
-                              <SidebarMenuSubButton className="cursor-pointer">
+                              <SidebarMenuSubButton isActive={!!isCarenciaRoute} className={`cursor-pointer ${isCarenciaRoute ? carenciaIndicator : ''}`}>
                                 <span>{subItem.title}</span>
                               </SidebarMenuSubButton>
                             </DialogTrigger>
