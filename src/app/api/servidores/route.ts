@@ -17,6 +17,49 @@ export async function GET(req: Request) {
     // Parse and clamp page size to avoid oversized payloads
     const pageSize = Math.min(Number(searchParams.get("pageSize") ?? "50") || 50, 100);
 
+    // Support simple text search via `q` parameter for autocomplete use-cases.
+    // If `q` is present we return a filtered (non-cursor) list limited by pageSize.
+    const q = searchParams.get("q") ?? searchParams.get("search") ?? null;
+
+    // If a search query is provided, perform a lightweight filtered query
+    // (suitable for autocomplete). We match by name (contains), cpf (contains)
+    // or exact enrollment to allow quick lookup by matrícula.
+    if (q && String(q).trim().length > 0) {
+      const term = String(q).trim();
+      const rows = await prisma.employee.findMany({
+        take: pageSize,
+        where: {
+          OR: [
+            { name: { contains: term, mode: "insensitive" } },
+            { cpf: { contains: term } },
+            { enrollment: term },
+          ],
+        },
+        orderBy: { name: "asc" },
+        select: {
+          id: true,
+          name: true,
+          cpf: true,
+          enrollment: true,
+          bond_type: true,
+          work_schedule: true,
+          createdAt: true,
+        },
+      });
+
+      const data = rows.map((s) => ({
+        id: s.id,
+        name: s.name,
+        cpf: s.cpf,
+        enrollment: s.enrollment,
+        bond_type: s.bond_type,
+        work_schedule: s.work_schedule,
+        createdAt: s.createdAt.toISOString(),
+      }));
+
+      return NextResponse.json({ data, nextCursor: null, hasNext: false });
+    }
+
     // Cursor: id of the last returned item (for forward pagination)
     const cursor = searchParams.get("cursor");
 

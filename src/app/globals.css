@@ -173,6 +173,16 @@ body {
   @apply overscroll-none bg-transparent;
 }
 
+/* Cursor pointer para elementos interativos comuns
+   - Objetivo: garantir que elementos clicáveis mostrem ponteiro em toda a aplicação
+   - Seletores: links, botões, elementos com role interativo, e classes/data attrs que usamos para interatividade
+   Nota: elementos com `onClick` ligados via React podem não gerar atributo `onclick` no DOM,
+   então também recomendamos usar a classe `clickable` ou `data-clickable` quando necessário.
+*/
+:where(a, button, input[type="button"], input[type="submit"], summary, [role="button"], [role="link"], [role="tab"], [role="menuitem"], [role="option"], [draggable="true"], [data-clickable], .clickable, .cursor-pointer, [onclick]) {
+  cursor: pointer;
+}
+
 :root {
   --font-sans: var(--font-inter);
   --header-height: calc(var(--spacing) * 12 + 1px);
