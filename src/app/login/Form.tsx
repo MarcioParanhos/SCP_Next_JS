@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Image from "next/image";
 import { signIn } from "next-auth/react";
 import toast from "react-hot-toast";
 import { cn } from "@/lib/utils";
@@ -68,14 +69,14 @@ export function LoginForm({
           <form onSubmit={handleSubmit} className="p-6 md:p-8">
             <FieldGroup>
               <div className="flex flex-col items-center gap-2 text-center">
-                <h1 className="text-2xl font-bold">Welcome back</h1>
+                <h1 className="text-2xl font-bold">Bem vindo ao Gestiun</h1>
                 <p className="text-muted-foreground text-balance">
-                  Login to your Acme Inc account
+                  Faça login na sua conta Gestiun
                 </p>
               </div>
               <Field>
                 <FieldLabel htmlFor="email">Email</FieldLabel>
-                <Input name="email" id="email" type="email" placeholder="m@example.com" required />
+                <Input name="email" value="marciodev.paranhos@gmail.com" id="email" type="email" placeholder="exemplo@exemplo.com" required />
               </Field>
               <Field>
                 <div className="flex items-center">
@@ -84,7 +85,7 @@ export function LoginForm({
                     Esqueceu a senha?
                   </a>
                 </div>
-                <Input name="senha" id="senha" type="password" required />
+                <Input name="senha" value="550012589" id="senha" type="password" required />
               </Field>
               <Field>
                 <Button type="submit" disabled={loading} className="inline-flex items-center justify-center">
@@ -101,7 +102,7 @@ export function LoginForm({
                   )}
                 </Button>
               </Field>
-              <FieldSeparator className="*:data-[slot=field-separator-content]:bg-card">
+              {/* <FieldSeparator className="*:data-[slot=field-separator-content]:bg-card">
                 Ou continue com
               </FieldSeparator>
               <Field className="grid grid-cols-3 gap-4">
@@ -132,24 +133,27 @@ export function LoginForm({
                   </svg>
                   <span className="sr-only">Login with Meta</span>
                 </Button>
-              </Field>
+              </Field> */}
               <FieldDescription className="text-center">
-                Don&apos;t have an account? <a href="#">Sign up</a>
+                Ainda não tem uma conta? <a href="#">Cadastre-se</a>
               </FieldDescription>
             </FieldGroup>
           </form>
-          <div className="bg-muted relative hidden md:block">
-            <img
-              src="/placeholder.svg"
-              alt="Image"
-              className="absolute inset-0 h-full w-full object-cover dark:brightness-[0.2] dark:grayscale"
+          <div className="bg-white dark:bg-white relative hidden md:block">
+            <Image
+              src="/images/Gestiun.png"
+              alt="Gestiun logo"
+              fill
+              className="object-contain w-full h-full"
+              quality={100}
+              priority
+              
             />
           </div>
         </CardContent>
       </Card>
       <FieldDescription className="px-6 text-center">
-        By clicking continue, you agree to our <a href="#">Terms of Service</a>{" "}
-        and <a href="#">Privacy Policy</a>.
+        Ao continuar, você concorda com os <a href="#">Termos de Serviço</a> e a <a href="#">Política de Privacidade</a> do Gestiun.
       </FieldDescription>
     </div>
   );
