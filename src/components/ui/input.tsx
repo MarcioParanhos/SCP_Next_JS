@@ -3,6 +3,13 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 
 function Input({ className, type, ...props }: React.ComponentProps<"input">) {
+  // Prevent React warning when a component changes an input from controlled to uncontrolled
+  // If a `value` prop is present but undefined/null, normalize it to an empty string
+  const hasValueProp = Object.prototype.hasOwnProperty.call(props, "value");
+  const safeProps = hasValueProp
+    ? { ...(props as any), value: (props as any).value ?? "" }
+    : props;
+
   return (
     <input
       type={type}
@@ -13,7 +20,7 @@ function Input({ className, type, ...props }: React.ComponentProps<"input">) {
         "aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive",
         className,
       )}
-      {...props}
+      {...(safeProps as any)}
     />
   );
 }
