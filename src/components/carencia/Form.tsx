@@ -6,6 +6,8 @@ import { CircleUserRound, X, Tag, Check, School } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import SchoolUnitSearch from "@/components/school-unit/SchoolUnitSearch";
 import SchoolUnitCard from "@/components/school-unit/SchoolUnitCard";
+import ServerSearch from "@/components/server/ServerSearch";
+import ServerCard from "@/components/server/ServerCard";
 import Combobox from "@/components/ui/combobox";
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
@@ -37,7 +39,8 @@ export function RealCarenciaForm() {
   const [rows, setRows] = React.useState<Array<any>>([]);
 
   // Lista de disciplinas: carregada do servidor (tabela `disciplines` via API)
-  const [disciplines, setDisciplines] = React.useState<string[]>([]);
+  // Agora armazenamos objetos `{ id, name }` para permitir enviar o id selecionado.
+  const [disciplines, setDisciplines] = React.useState<Array<{ id: number; name: string }>>([]);
   const areas = ["Ensino Fundamental", "Ensino Médio", "Educação Infantil"];
   const motives = ["Substituição", "Aumento de carga", "Afastamento", "Licença"];
 
@@ -50,8 +53,9 @@ export function RealCarenciaForm() {
         if (!res.ok) return;
         const json = await res.json();
         if (!mounted) return;
-        const data = (json.data || []).map((d: any) => d.name);
-        setDisciplines(data);
+        // Mantemos a lista completa de objetos retornados pelo servidor
+        // para podermos obter os ids quando o usuário selecionar uma disciplina.
+        setDisciplines(json.data || []);
       } catch (err) {
         console.error('Erro ao carregar disciplinas:', err);
       }
@@ -60,11 +64,15 @@ export function RealCarenciaForm() {
   }, []);
 
   // Estados controlados para os campos do card "Dados da Carência".
+  // Armazenamos o nome e o id da disciplina selecionada.
   const [selectedDiscipline, setSelectedDiscipline] = React.useState<string>("");
+  const [selectedDisciplineId, setSelectedDisciplineId] = React.useState<number | null>(null);
   const [selectedArea, setSelectedArea] = React.useState<string>("");
   const [selectedMotive, setSelectedMotive] = React.useState<string>("");
   const [selectedDate, setSelectedDate] = React.useState<string>("");
   const [selectedCurso, setSelectedCurso] = React.useState<string>("");
+  // Armazenamos também o id do curso selecionado (útil para envio ao backend).
+  const [selectedCursoId, setSelectedCursoId] = React.useState<number | null>(null);
   const [selectedEixo, setSelectedEixo] = React.useState<string>("");
 
   // Eixos e cursos carregados da API (tabelas eixos/courses)
@@ -314,15 +322,20 @@ export function RealCarenciaForm() {
   // - Endpoint API para salvar a carência e tratamento de erros/retorno
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const payload = {
+    // Monta o payload incluindo ids quando disponíveis (disciplina e curso)
+    const payload: any = {
       unitId: selectedUnit,
       serverId: selectedServer,
-      discipline: selectedDiscipline,
+      discipline: { id: selectedDisciplineId, name: selectedDiscipline },
       area: selectedArea,
       motive: selectedMotive,
       startDate: selectedDate,
       rows,
     };
+    // Se for profissionalizante, inclua também o curso selecionado com id
+    if (tipo === 'profissionalizante') {
+      payload.course = { id: selectedCursoId, name: selectedCurso };
+    }
     // Em desenvolvimento apenas imprimimos no console. Substituir por `fetch('/api/carencias', { method: 'POST', body: JSON.stringify(payload) })` quando o endpoint existir.
     console.log("carencia payload:", payload);
     toast.success("Dados preparados (não salvos): ver console");
@@ -416,9 +429,6 @@ export function RealCarenciaForm() {
                 </div>
               </div>
             </div>
-            
-
-            
           </CardContent>
         </Card>
 
@@ -470,7 +480,18 @@ export function RealCarenciaForm() {
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div>
                 <Label className="mb-2">Disciplina <span className="text-rose-500">*</span></Label>
-                <Combobox options={disciplines} value={selectedDiscipline} onChange={(v) => setSelectedDiscipline(v)} placeholder="Pesquisar disciplina..." id="disciplina" />
+                {/* Combobox para disciplinas: mostramos os nomes, mas também gravamos o id correspondente */}
+                <Combobox
+                  options={disciplines.map((d) => d.name)}
+                  value={selectedDiscipline}
+                  onChange={(v) => {
+                    setSelectedDiscipline(v);
+                    const found = disciplines.find((d) => d.name === v);
+                    setSelectedDisciplineId(found ? Number(found.id) : null);
+                  }}
+                  placeholder="Pesquisar disciplina..."
+                  id="disciplina"
+                />
               </div>
 
               <div>
@@ -528,8 +549,10 @@ export function RealCarenciaForm() {
                       const found = coursesList.find((c) => c.name === v);
                       if (found) {
                         setSelectedEixo(String(found.eixo_id));
+                        setSelectedCursoId(found.id ?? null);
                       } else {
                         setSelectedEixo("");
+                        setSelectedCursoId(null);
                       }
                     }}
                     placeholder={loadingCourses ? "Carregando..." : coursesList.length === 0 ? "Nenhum curso cadastrado" : "Pesquisar curso..."}
@@ -627,128 +650,34 @@ export function RealCarenciaForm() {
                   {/* Coluna principal: campo de busca e resultados */}
                   <div className="flex-1">
                     {/* Campo de busca debounced: busca por nome, CPF ou matrícula */}
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
-                        {/* search icon */}
-                        <svg className="h-4 w-4 text-muted-foreground" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                          <path d="M9 15a6 6 0 100-12 6 6 0 000 12z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                          <path d="M17 17l-3.5-3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
-                      </div>
-                      <input
-                        ref={inputRef}
-                        aria-label="Buscar servidor"
-                        placeholder={loadingServers ? "Carregando..." : "Buscar servidor por nome, CPF ou matrícula"}
-                        value={serverQuery}
-                        onChange={(e) => { setServerQuery(e.target.value); setResultsOpen(true); }}
-                        onFocus={() => { if (serverQuery.trim() !== "") setResultsOpen(true); }}
-                        onKeyDown={(e) => {
-                          if (!resultsOpen) return;
-                          if (e.key === "ArrowDown") {
-                            e.preventDefault();
-                            setHighlightedIndex((i) => Math.min(i + 1, servers.length - 1));
-                          } else if (e.key === "ArrowUp") {
-                            e.preventDefault();
-                            setHighlightedIndex((i) => Math.max(i - 1, 0));
-                          } else if (e.key === "Enter") {
-                            e.preventDefault();
-                            const s = servers[highlightedIndex];
-                            if (s) {
-                              // guarda o servidor selecionado e limpa o campo de busca
-                              setSelectedServer(String(s.id));
-                              setSelectedServerData(s);
-                              setServerQuery("");
-                              setDebouncedServerQuery("");
-                              setServers([]);
-                              setResultsOpen(false);
-                            }
-                          } else if (e.key === "Escape") {
-                            setResultsOpen(false);
-                          }
-                        }}
-                        className="w-full md:w-1/2 max-w-xl rounded-md border pl-8 pr-2 py-1 text-sm"
-                      />
-                      {/* loading spinner on the right */}
-                      {loadingServers && (
-                        <div className="absolute inset-y-0 right-0 pr-2 flex items-center">
-                          <svg className="h-4 w-4 animate-spin text-muted-foreground" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
-                          </svg>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Resultados da busca exibidos em lista clicável. */}
-                    {serverQuery.trim().length > 0 && (
-                      <div ref={resultsRef} className="mt-2 max-h-48 overflow-auto rounded-md border bg-card shadow-sm">
-                        {loadingServers && <div className="p-2 text-sm text-muted-foreground">Buscando...</div>}
-                        {!loadingServers && servers.length === 0 && (
-                          <div className="p-2 text-sm text-muted-foreground">Nenhum servidor encontrado</div>
-                        )}
-                        {!loadingServers && servers.map((s, idx) => (
-                          <button
-                            key={s.id}
-                            type="button"
-                            onMouseEnter={() => setHighlightedIndex(idx)}
-                            onClick={() => {
-                                // guarda o objeto selecionado e limpa pesquisa/resultado
-                                setSelectedServer(String(s.id));
-                                setSelectedServerData(s);
-                                setServerQuery("");
-                                setDebouncedServerQuery("");
-                                setServers([]);
-                                setResultsOpen(false);
-                              }}
-                            className={`w-full text-left px-3 py-2 ${highlightedIndex === idx ? 'bg-muted-foreground/5 text-foreground' : 'text-muted-foreground'}`}
-                          >
-                            <div className="flex items-center justify-between">
-                              <div className="text-sm font-medium">{s.name}</div>
-                              <div className="text-xs text-muted-foreground">{s.enrollment ?? "-"}</div>
-                            </div>
-                            <div className="text-xs text-muted-foreground">{s.bond_type ?? '-'} • {s.work_schedule ?? '-'}</div>
-                          </button>
-                        ))}
-                      </div>
-                    )}
+                    {/* Componente reutilizável de busca de servidores (controlado pelo Form) */}
+                    <ServerSearch
+                      serverQuery={serverQuery}
+                      setServerQuery={setServerQuery}
+                      loading={loadingServers}
+                      servers={servers}
+                      resultsOpen={resultsOpen}
+                      setResultsOpen={setResultsOpen}
+                      highlightedIndex={highlightedIndex}
+                      setHighlightedIndex={setHighlightedIndex}
+                      inputRef={inputRef}
+                      onSelectServer={(s) => {
+                        setSelectedServer(String(s.id));
+                        setSelectedServerData(s);
+                        setServerQuery("");
+                        setDebouncedServerQuery("");
+                        setServers([]);
+                        setResultsOpen(false);
+                      }}
+                    />
                     {/* Se um servidor foi selecionado, mostramos dados resumidos adicionais abaixo */}
-                    {selectedServerData ? (
-                      <div className="mt-3">
-                        <div className="relative rounded-lg border border-muted-foreground/20 bg-card p-3 shadow-sm w-full">
-                          <div className="absolute top-2 right-2">
-                            <button
-                              type="button"
-                              aria-label="Limpar seleção de servidor"
-                              onClick={() => {
-                                setSelectedServer(null);
-                                setSelectedServerData(null);
-                                setServerQuery("");
-                                setServers([]);
-                              }}
-                              className="p-2 rounded-md hover:bg-muted-foreground/5"
-                              >
-                                <X className="h-5 w-5 text-muted-foreground" />
-                            </button>
-                          </div>
-                          <div className="flex items-center gap-3">
-                            <div className="flex-shrink-0">
-                                <div className="flex items-center justify-center h-12 w-12 rounded-full bg-primary text-primary-foreground">
-                                  <CircleUserRound className="h-6 w-6" />
-                                </div>
-                            </div>
-                            <div>
-                              <div className="text-base font-semibold text-foreground">{selectedServerData.name}</div>
-                              <div className="mt-1 text-sm text-muted-foreground">Matrícula: {selectedServerData.enrollment ?? "-"}</div>
-                              <div className="text-sm text-muted-foreground">Vínculo: {selectedServerData.bond_type ?? "-"} • Regime: {selectedServerData.work_schedule ?? "-"}</div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="mt-3 rounded-sm px-3 py-2 border border-muted-foreground/10 bg-muted/5 text-sm text-muted-foreground">
-                        Nenhum servidor selecionado. Use a busca acima para encontrar o servidor responsável.
-                      </div>
-                    )}
+                    {/* Mostra cartão de servidor selecionado usando componente reutilizável */}
+                    <ServerCard server={selectedServerData} onClear={() => {
+                      setSelectedServer(null);
+                      setSelectedServerData(null);
+                      setServerQuery("");
+                      setServers([]);
+                    }} />
                   </div>
 
                   {/* Removido: botão para adicionar servidor conforme solicitado pelo usuário */}
