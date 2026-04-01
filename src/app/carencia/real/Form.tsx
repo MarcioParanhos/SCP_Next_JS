@@ -33,12 +33,18 @@ export function RealCarenciaForm() {
   const areas = ["Ensino Fundamental", "Ensino Médio", "Educação Infantil"];
   const motives = ["Substituição", "Aumento de carga", "Afastamento", "Licença"];
 
+  // Opções específicas para tipo profissionalizante
+  const cursos = ["Técnico em Informática", "Técnico em Administração", "Técnico em Enfermagem"];
+  const eixos = ["Tecnologia", "Gestão e Negócios", "Saúde"];
+
   // Estados controlados para os campos do card "Dados da Carência".
   // Inicializamos com string vazia para facilitar binding a controles HTML/Componentes.
   const [selectedDiscipline, setSelectedDiscipline] = React.useState<string>("");
   const [selectedArea, setSelectedArea] = React.useState<string>("");
   const [selectedMotive, setSelectedMotive] = React.useState<string>("");
   const [selectedDate, setSelectedDate] = React.useState<string>("");
+  const [selectedCurso, setSelectedCurso] = React.useState<string>("");
+  const [selectedEixo, setSelectedEixo] = React.useState<string>("");
 
   // Quantitativos por turno (MAT / VESP / NOT) e total dinâmico
   const [morningCount, setMorningCount] = React.useState<number>(0);
@@ -292,6 +298,7 @@ export function RealCarenciaForm() {
                 </Select>
               </div>
             </div>
+            
 
             {/* Exibe informações compactas da unidade selecionada para contexto ao usuário. */}
             {selectedUnitData && (
@@ -411,6 +418,39 @@ export function RealCarenciaForm() {
                 <Input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} className="w-full" />
               </div>
             </div>
+
+            {/* Campos extras apenas para Profissionalizante (Dados da Carência) */}
+            {tipo === 'profissionalizante' && (
+              <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label className="mb-2">Curso <span className="text-rose-500">*</span></Label>
+                  <Select value={selectedCurso || undefined} onValueChange={(v) => setSelectedCurso(v ?? "")}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Selecione o curso" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {cursos.map((c) => (
+                        <SelectItem key={c} value={c}>{c}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label className="mb-2">Eixo <span className="text-rose-500">*</span></Label>
+                  <Select value={selectedEixo || undefined} onValueChange={(v) => setSelectedEixo(v ?? "")}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Selecione o eixo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {eixos.map((e) => (
+                        <SelectItem key={e} value={e}>{e}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            )}
 
             {/* Quantitativos por turno: inputs numéricos e total dinâmico */}
             <div className="mt-4">
