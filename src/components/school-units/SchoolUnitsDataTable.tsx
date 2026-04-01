@@ -224,8 +224,24 @@ function DraggableRow({ row }: { row: Row<SchoolUnitRow> }) {
   // - Define `data-state="selected"` quando a linha está selecionada para permitir estilos visuais.
   // - Não contém lógica de reordenação; a manipulação da ordem (se necessária) deve ser feita
   //   explicitamente no estado `data` ou via ações do usuário.
+  const router = useRouter();
+
   return (
-    <TableRow data-state={row.getIsSelected() && "selected"}>
+    <TableRow
+      data-state={row.getIsSelected() && "selected"}
+      className="cursor-pointer"
+      onDoubleClick={(e) => {
+        // Ctrl/Meta + double-click -> open in edit mode (query param)
+        // Double-click alone -> open view page
+        const id = (row.original as any).id;
+        if (!id) return;
+        if (e.ctrlKey || e.metaKey) {
+          router.push(`/school_units/${id}?mode=edit`);
+        } else {
+          router.push(`/school_units/${id}`);
+        }
+      }}
+    >
       {row.getVisibleCells().map((cell) => (
         <TableCell key={cell.id}>
           {flexRender(cell.column.columnDef.cell, cell.getContext())}
@@ -449,7 +465,7 @@ export function SchoolUnitsDataTable({
       accessorKey: "nte",
       header: "NTE",
       cell: ({ row }) => (
-        <div className="w-full">
+        <div className="w-full text-left">
           <Badge variant="outline" className="text-muted-foreground px-1.5">
             {row.original.nte || "—"}
           </Badge>
@@ -466,7 +482,7 @@ export function SchoolUnitsDataTable({
         const isAssigned = row.original.municipality !== "Assign reviewer";
 
         if (isAssigned) {
-          return row.original.municipality;
+          return <div className="w-full text-left">{row.original.municipality}</div>;
         }
 
         return (
@@ -500,7 +516,7 @@ export function SchoolUnitsDataTable({
       accessorKey: "schoolUnit",
       header: "Unidade Escolar",
       cell: ({ row }) => {
-        return <TableCellViewer item={row.original} />;
+        return <div className="w-full text-left"><TableCellViewer item={row.original} /></div>;
       },
       enableHiding: false,
     },
@@ -508,9 +524,9 @@ export function SchoolUnitsDataTable({
     // - Centralizado via wrapper <div>.
     {
       accessorKey: "sec_code",
-      header: () => <div className="w-full text-center">Código SEC</div>,
+      header: () => <div className="w-full text-right">Código SEC</div>,
       cell: ({ row }) => (
-        <div className="w-full text-center">{row.original.sec_code}</div>
+        <div className="w-full text-right">{row.original.sec_code}</div>
       ),
     },
     // Coluna Código SAP (uo_code): código da unidade orçamentária no sistema SAP.
@@ -518,9 +534,9 @@ export function SchoolUnitsDataTable({
     //   Para remover o cast, adicione `uo_code?: string | null` em `SchoolUnitRow` (schema.ts).
     {
       accessorKey: "uo_code",
-      header: () => <div className="w-full text-center">Código SAP</div>,
+      header: () => <div className="w-full text-right">Código SAP</div>,
       cell: ({ row }) => (
-        <div className="w-full text-center">{(row.original as any).uo_code ?? "—"}</div>
+        <div className="w-full text-right">{(row.original as any).uo_code ?? "—"}</div>
       ),
     },
     // Coluna Tipologia: categoria da unidade escolar (ex: CEJA, CEEP, CEC, etc.).
@@ -557,9 +573,9 @@ export function SchoolUnitsDataTable({
             <Badge
               className={
                 isHomologated
-                  ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-300 px-1.5"
+                  ? "bg-emerald-500/10 text-emerald-700 dark:bg-emerald-400/10 dark:text-emerald-300 px-1.5"
                   : isUnhomologated
-                  ? "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300 px-1.5"
+                  ? "bg-red-500/10 text-red-700 dark:bg-red-400/10 dark:text-red-300 px-1.5"
                   : "bg-muted text-muted-foreground px-1.5"
               }
             >
@@ -582,14 +598,14 @@ export function SchoolUnitsDataTable({
             <Badge
               className={
                 isActive
-                  ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300 px-1.5"
-                  : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300 px-1.5"
+                  ? "bg-green-500/10 text-green-700 dark:bg-green-400/10 dark:text-green-300 px-1.5"
+                  : "bg-red-500/10 text-red-700 dark:bg-red-400/10 dark:text-red-300 px-1.5"
               }
             >
               {isActive ? (
-                <IconCircleCheckFilled className="size-4 inline mr-1 align-middle text-green-600 dark:text-green-300" />
+                <IconCircleCheckFilled className="size-4 inline mr-1 align-middle text-green-700 dark:text-green-300" />
               ) : (
-                <IconLoader className="size-4 inline mr-1 align-middle text-red-600 dark:text-red-300" />
+                <IconLoader className="size-4 inline mr-1 align-middle text-red-700 dark:text-red-300" />
               )}
               {label}
             </Badge>
@@ -992,17 +1008,17 @@ export function SchoolUnitsDataTable({
               </TableHeader>
               <TableBody className="**:data-[slot=table-cell]:first:w-8">
                 {loading ? (
-                  <TableRow>
-                    <TableCell
-                      colSpan={columns.length}
-                      className="h-24 text-center"
-                    >
-                      <div className="flex items-center justify-center gap-2">
-                        <IconLoader className="animate-spin" />
-                        Loading...
-                      </div>
-                    </TableCell>
-                  </TableRow>
+                  <>
+                    {Array.from({ length: 6 }).map((_, rIdx) => (
+                      <TableRow key={`skeleton-${rIdx}`}>
+                        {table.getAllColumns().map((col, cIdx) => (
+                          <TableCell key={`skeleton-${rIdx}-${cIdx}`}>
+                            <div className="h-4 bg-muted/30 rounded animate-pulse w-full my-2" />
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    ))}
+                  </>
                 ) : table.getRowModel().rows?.length ? (
                   <>
                     {table.getRowModel().rows.map((row) => (
