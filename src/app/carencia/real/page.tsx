@@ -1,6 +1,6 @@
 "use client";
 
-import { RealCarenciaForm } from "./Form";
+import { RealCarenciaForm } from "../../../components/carencia/Form";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { SiteHeader } from "@/components/site-header";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";

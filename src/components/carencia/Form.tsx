@@ -2,7 +2,7 @@
 
 import React from "react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardAction } from "@/components/ui/card";
-import { CircleUserRound, X, Tag, Check } from "lucide-react";
+import { CircleUserRound, X, Tag, Check, School } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
@@ -14,13 +14,19 @@ export function RealCarenciaForm() {
   // Tipo: Array<any> — no futuro podemos substituir por um tipo específico `SchoolUnit`.
   const [units, setUnits] = React.useState<Array<any>>([]);
 
-  // Estado booleano que indica se a listagem de unidades ainda está sendo carregada.
-  // Usado para mostrar placeholder no Select e evitar interações prematuras.
-  const [loading, setLoading] = React.useState(true);
-
   // ID (string) da unidade selecionada no formulário. `null` significa nenhuma seleção.
   // Mantemos como string porque os valores do Select são strings.
   const [selectedUnit, setSelectedUnit] = React.useState<string | null>(null);
+  const [selectedUnitData, setSelectedUnitData] = React.useState<any | null>(null);
+
+  // Search/autocomplete state for school units (to avoid loading all 1700 at once)
+  const [unitQuery, setUnitQuery] = React.useState<string>("");
+  const [debouncedUnitQuery, setDebouncedUnitQuery] = React.useState<string>("");
+  const [loadingUnitResults, setLoadingUnitResults] = React.useState<boolean>(false);
+  const [unitResultsOpen, setUnitResultsOpen] = React.useState<boolean>(false);
+  const [unitHighlightedIndex, setUnitHighlightedIndex] = React.useState<number>(-1);
+  const unitResultsRef = React.useRef<HTMLDivElement | null>(null);
+  const unitInputRef = React.useRef<HTMLInputElement | null>(null);
 
   // Estrutura de linhas de disciplina/carga — atualmente usada para extender o formulário
   // cada item tem formato aproximado: { id, discipline, area, reason, startDate, morning, afternoon, night }
@@ -78,34 +84,73 @@ export function RealCarenciaForm() {
   // e para integrar melhorias de acessibilidade/automação futuramente.
   const inputRef = React.useRef<HTMLInputElement | null>(null);
 
-  // Efeito que carrega a listagem de unidades escolares ao montar o componente.
-  // Observações importantes:
-  // - Faz fetch para `/api/school_units?pageSize=200` (paginação simples usada aqui);
-  // - Usa `mounted` para evitar setState depois do componente desmontar (cancelamento simples);
-  // - Em produção, trate erros de rede com mais cuidado e mostre feedback contextual ao usuário.
+  // We don't pre-load all units (there are ~1700). Use a debounced autocomplete
+  // to search units on demand to keep the UI responsive.
+  React.useEffect(() => {
+    const t = setTimeout(() => setDebouncedUnitQuery(unitQuery.trim()), 300);
+    return () => clearTimeout(t);
+  }, [unitQuery]);
+
   React.useEffect(() => {
     let mounted = true;
     (async () => {
+      // require at least 3 chars to avoid heavy/ambiguous searches that return many results
+      if (debouncedUnitQuery.length < 3) {
+        setUnits([]);
+        setUnitResultsOpen(false);
+        return;
+      }
       try {
-        const res = await fetch(`/api/school_units?pageSize=200`);
-        if (!res.ok) throw new Error("failed");
+        setLoadingUnitResults(true);
+        const params = new URLSearchParams();
+        params.set("q", debouncedUnitQuery);
+        params.set("pageSize", "20");
+        const res = await fetch(`/api/school_units?${params.toString()}`);
+        if (!res.ok) return;
         const json = await res.json();
-        if (!mounted) return; // evita atualizar estado se o componente já desmontou
-        const list = json.data || [];
-        setUnits(list);
-        // Seleção automática da primeira unidade para conveniência (pode ser removida)
-        if (list.length > 0) setSelectedUnit(String(list[0].id));
+        if (!mounted) return;
+        // Client-side filter to avoid showing irrelevant matches.
+        // Behavior:
+        // - If query is numeric: treat as code/id search — match SEC or UO codes (exact or contains)
+        // - Otherwise: match by name, SEC or UO (case-insensitive substring)
+        const raw = json.data || [];
+        const q = debouncedUnitQuery.toLowerCase().trim();
+        const isNumeric = /^\d+$/.test(q);
+        const filtered = raw.filter((u: any) => {
+          const name = (u.schoolUnit || "").toLowerCase();
+          const sec = String(u.sec_code ?? u.id ?? "").toLowerCase();
+          const uo = String(u.uo_code ?? "").toLowerCase();
+          const municipality = (typeof u.municipality === 'string' ? u.municipality : (u.municipality?.name ?? ''))?.toLowerCase();
+          if (isNumeric) {
+            return sec === q || sec.includes(q) || uo === q || uo.includes(q);
+          }
+          return name.includes(q) || sec.includes(q) || uo.includes(q) || municipality.includes(q);
+        });
+        setUnits(filtered);
+        setUnitHighlightedIndex(0);
+        setUnitResultsOpen(true);
       } catch (err) {
-        // Log detalhado para debug; mostramos toast simplificado ao usuário
-        console.error(err);
-        toast.error("Não foi possível carregar unidades.");
+        console.error("Erro ao buscar unidades:", err);
       } finally {
-        if (mounted) setLoading(false);
+        if (mounted) setLoadingUnitResults(false);
       }
     })();
     return () => {
-      mounted = false; // sinaliza cancelamento ao efeito assíncrono
+      mounted = false;
     };
+  }, [debouncedUnitQuery]);
+
+  // Close unit results on outside click
+  React.useEffect(() => {
+    function onDocClick(e: MouseEvent) {
+      const el = unitResultsRef.current;
+      if (!el) return;
+      if (e.target instanceof Node && !el.contains(e.target)) {
+        setUnitResultsOpen(false);
+      }
+    }
+    document.addEventListener("click", onDocClick);
+    return () => document.removeEventListener("click", onDocClick);
   }, []);
 
   // Efeito separado para carregar servidores (lista paginada simplificada)
@@ -224,11 +269,8 @@ export function RealCarenciaForm() {
     toast.success("Dados preparados (não salvos): ver console");
   }
 
-  // Deriva os dados completos da unidade selecionada a partir da lista já carregada.
-  // Isto evita chamadas adicionais ao servidor enquanto navegamos no formulário.
-  const selectedUnitData = React.useMemo(() => {
-    return units.find((u) => String(u.id) === String(selectedUnit)) ?? null;
-  }, [units, selectedUnit]);
+  // selectedUnitData é guardado no estado quando o usuário escolhe uma unidade
+  // a fim de evitar depender da lista `units` (que é apenas resultados da busca).
 
   // Verifica se a unidade está homologada. Se estiver, bloqueamos o envio da carência
   // e mostramos um aviso discreto — regra de negócio definida pelo produto.
@@ -282,42 +324,147 @@ export function RealCarenciaForm() {
               <div>
                 {/* Select controlado que escolhe a unidade. Usamos `value=undefined` quando null para compatibilidade com o componente Select. */}
                 <Label className="mb-2">Unidade Escolar <span className="text-rose-500">*</span></Label>
-                <Select value={selectedUnit ?? undefined} onValueChange={(v) => setSelectedUnit(v ?? null)}>
-                  <SelectTrigger className="w-full">
-                    {/* Placeholder que muda quando `loading` estiver true */}
-                    <SelectValue placeholder={loading ? "Carregando..." : "Selecione uma unidade"} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {/* Renderiza opções a partir da lista `units` carregada */}
-                    {units.map((u) => (
-                      <SelectItem key={u.id} value={String(u.id)}>
-                        {u.schoolUnit}
-                      </SelectItem>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
+                    <svg className="h-4 w-4 text-muted-foreground" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M9 15a6 6 0 100-12 6 6 0 000 12z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                      <path d="M17 17l-3.5-3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </div>
+                  <input
+                    ref={unitInputRef}
+                    aria-label="Buscar unidade"
+                    placeholder={loadingUnitResults ? "Carregando..." : "Buscar unidade por nome, código ou município"}
+                    value={unitQuery}
+                    onChange={(e) => { setUnitQuery(e.target.value); setUnitResultsOpen(true); }}
+                    onFocus={() => { if (unitQuery.trim() !== "") setUnitResultsOpen(true); }}
+                    onKeyDown={(e) => {
+                      if (!unitResultsOpen) return;
+                      if (e.key === "ArrowDown") {
+                        e.preventDefault();
+                        setUnitHighlightedIndex((i) => Math.min(i + 1, units.length - 1));
+                      } else if (e.key === "ArrowUp") {
+                        e.preventDefault();
+                        setUnitHighlightedIndex((i) => Math.max(i - 1, 0));
+                      } else if (e.key === "Enter") {
+                        e.preventDefault();
+                        const u = units[unitHighlightedIndex];
+                        if (u) {
+                          setSelectedUnit(String(u.id));
+                          setSelectedUnitData(u);
+                          setUnitQuery("");
+                          setDebouncedUnitQuery("");
+                          setUnits([]);
+                          setUnitResultsOpen(false);
+                        }
+                      } else if (e.key === "Escape") {
+                        setUnitResultsOpen(false);
+                      }
+                    }}
+                    className="w-full rounded-md border pl-8 pr-2 py-1 text-sm"
+                  />
+                  {loadingUnitResults && (
+                    <div className="absolute inset-y-0 right-0 pr-2 flex items-center">
+                      <svg className="h-4 w-4 animate-spin text-muted-foreground" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+                      </svg>
+                    </div>
+                  )}
+                </div>
+
+                {/* Resultados filtrados em dropdown */}
+                {unitResultsOpen && (
+                  <div ref={unitResultsRef} className="mt-2 max-h-48 overflow-auto rounded-md border bg-card shadow-sm">
+                    {loadingUnitResults && <div className="p-2 text-sm text-muted-foreground">Buscando...</div>}
+                    {!loadingUnitResults && units.length === 0 && (
+                      <div className="p-2 text-sm text-muted-foreground">{unitQuery.trim().length < 3 ? 'Digite 3 ou mais caracteres para buscar' : 'Nenhuma unidade encontrada'}</div>
+                    )}
+                    {!loadingUnitResults && units.map((u, idx) => (
+                      <button
+                        key={u.id}
+                        type="button"
+                        onMouseEnter={() => setUnitHighlightedIndex(idx)}
+                        onClick={() => {
+                          setSelectedUnit(String(u.id));
+                          setSelectedUnitData(u);
+                          setUnitQuery("");
+                          setDebouncedUnitQuery("");
+                          setUnits([]);
+                          setUnitResultsOpen(false);
+                        }}
+                        className={`w-full text-left px-3 py-2 ${unitHighlightedIndex === idx ? 'bg-muted-foreground/5 text-foreground' : 'text-muted-foreground'}`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="text-sm font-medium">{u.schoolUnit}</div>
+                          <div className="text-xs text-muted-foreground">{u.sec_code ?? u.uo_code ?? "-"}</div>
+                        </div>
+                        <div className="text-xs text-muted-foreground">{u.municipality ?? '-'}</div>
+                      </button>
                     ))}
-                  </SelectContent>
-                </Select>
+                  </div>
+                )}
+                {/* Compact selected unit card (appears after selection) */}
+                {selectedUnitData && (
+                  <div className="mt-3">
+                    <div className="relative rounded-lg border border-muted-foreground/20 bg-card p-3 shadow-sm w-full">
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="flex items-center justify-center h-12 w-12 rounded-full bg-primary text-primary-foreground">
+                            <School className="h-6 w-6" />
+                          </div>
+                          <div>
+                            <div className="text-sm font-semibold text-foreground">{selectedUnitData.schoolUnit}</div>
+                            <div className="text-xs text-muted-foreground">{selectedUnitData.municipality ?? "-"}</div>
+                          </div>
+                        </div>
+                        <div className="ml-4 flex-shrink-0">
+                          <div className="text-sm text-muted-foreground text-right">&nbsp;</div>
+                        </div>
+                      </div>
+
+                      {/* Small info cards moved inside the compact card */}
+                      <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+                        {[
+                          { label: "Código SEC", value: selectedUnitData.sec_code ?? selectedUnitData.sec_cod ?? "-" },
+                          { label: "Código UO", value: selectedUnitData.uo_code ?? "-" },
+                          { label: "Tipologia", value: selectedUnitData.typology ?? selectedUnitData.typology?.name ?? "-" },
+                          { label: "Município", value: selectedUnitData.municipality ?? selectedUnitData.municipality?.name ?? "-" },
+                          { label: "NTE", value: selectedUnitData.nte ?? (selectedUnitData.municipality?.nte?.name) ?? "-" },
+                          { label: "Status", value: selectedUnitData.status === "1" ? "Ativa" : (selectedUnitData.status ?? "-") },
+                        ].map((it) => (
+                          <div key={it.label} className="rounded-sm px-2 py-1 border border-muted-foreground/10 bg-transparent">
+                            <div className="text-[10px] text-muted-foreground">{it.label}</div>
+                            <div className="mt-1 text-xs font-medium text-foreground">{it.value}</div>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="absolute top-2 right-2">
+                        <button
+                          type="button"
+                          aria-label="Limpar seleção de unidade"
+                          onClick={() => {
+                            setSelectedUnit(null);
+                            setSelectedUnitData(null);
+                            setUnitQuery("");
+                            setDebouncedUnitQuery("");
+                            setUnits([]);
+                            setUnitResultsOpen(false);
+                          }}
+                          className="p-2 rounded-md hover:bg-muted-foreground/5"
+                        >
+                          <X className="h-5 w-5 text-muted-foreground" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
             
 
-            {/* Exibe informações compactas da unidade selecionada para contexto ao usuário. */}
-            {selectedUnitData && (
-              <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
-                {[
-                  { label: "Código SEC", value: selectedUnitData.sec_code ?? selectedUnitData.sec_cod ?? "-" },
-                  { label: "Código UO", value: selectedUnitData.uo_code ?? "-" },
-                  { label: "Tipologia", value: selectedUnitData.typology ?? selectedUnitData.typology?.name ?? "-" },
-                  { label: "Município", value: selectedUnitData.municipality ?? selectedUnitData.municipality?.name ?? "-" },
-                  { label: "NTE", value: selectedUnitData.nte ?? (selectedUnitData.municipality?.nte?.name) ?? "-" },
-                  { label: "Status", value: selectedUnitData.status === "1" ? "Ativa" : (selectedUnitData.status ?? "-") },
-                ].map((it) => (
-                  <div key={it.label} className="rounded-sm px-2 py-1 border border-muted-foreground/10 bg-transparent">
-                    <div className="text-[10px] text-muted-foreground">{it.label}</div>
-                    <div className="mt-1 text-xs font-medium text-foreground">{it.value}</div>
-                  </div>
-                ))}
-              </div>
-            )}
+            
           </CardContent>
         </Card>
 
