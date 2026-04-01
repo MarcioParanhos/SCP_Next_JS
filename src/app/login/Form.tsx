@@ -76,7 +76,7 @@ export function LoginForm({
               </div>
               <Field>
                 <FieldLabel htmlFor="email">Email</FieldLabel>
-                <Input name="email" value="marciodev.paranhos@gmail.com" id="email" type="email" placeholder="exemplo@exemplo.com" required />
+                <Input name="email" defaultValue="marciodev.paranhos@gmail.com" id="email" type="email" placeholder="exemplo@exemplo.com" required />
               </Field>
               <Field>
                 <div className="flex items-center">
@@ -85,7 +85,7 @@ export function LoginForm({
                     Esqueceu a senha?
                   </a>
                 </div>
-                <Input name="senha" value="550012589" id="senha" type="password" required />
+                <Input name="senha" defaultValue="550012589" id="senha" type="password" required />
               </Field>
               <Field>
                 <Button type="submit" disabled={loading} className="inline-flex items-center justify-center">
