@@ -118,7 +118,8 @@
   --chart-5: oklch(0.769 0.188 70.08);
   /* sidebar: faintly inherit the current theme primary color */
   --sidebar: color-mix(in srgb, var(--primary) 8%, white);
-  --sidebar-foreground: hsl(240 5.3% 26.1%);
+  /* Aumenta levemente contraste do texto do sidebar para acessibilidade */
+  --sidebar-foreground: hsl(240 6% 20%);
   --sidebar-primary: hsl(240 5.9% 10%);
   --sidebar-primary-foreground: hsl(0 0% 98%);
   --sidebar-accent: hsl(240 4.8% 95.9%);

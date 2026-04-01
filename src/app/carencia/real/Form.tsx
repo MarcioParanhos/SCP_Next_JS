@@ -2,7 +2,7 @@
 
 import React from "react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardAction } from "@/components/ui/card";
-import { CircleUserRound, X, Tag } from "lucide-react";
+import { CircleUserRound, X, Tag, Check } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
@@ -613,7 +613,7 @@ export function RealCarenciaForm() {
                       </div>
                     )}
                     {/* Se um servidor foi selecionado, mostramos dados resumidos adicionais abaixo */}
-                    {selectedServerData && (
+                    {selectedServerData ? (
                       <div className="mt-3">
                         <div className="relative rounded-lg border border-muted-foreground/20 bg-card p-3 shadow-sm w-full">
                           <div className="absolute top-2 right-2">
@@ -633,9 +633,9 @@ export function RealCarenciaForm() {
                           </div>
                           <div className="flex items-center gap-3">
                             <div className="flex-shrink-0">
-                              <div className="flex items-center justify-center h-12 w-12 rounded-full bg-muted-foreground/10">
-                                <CircleUserRound className="h-6 w-6 text-muted-foreground" />
-                              </div>
+                                <div className="flex items-center justify-center h-12 w-12 rounded-full bg-primary text-primary-foreground">
+                                  <CircleUserRound className="h-6 w-6" />
+                                </div>
                             </div>
                             <div>
                               <div className="text-base font-semibold text-foreground">{selectedServerData.name}</div>
@@ -644,6 +644,10 @@ export function RealCarenciaForm() {
                             </div>
                           </div>
                         </div>
+                      </div>
+                    ) : (
+                      <div className="mt-3 rounded-sm px-3 py-2 border border-muted-foreground/10 bg-muted/5 text-sm text-muted-foreground">
+                        Nenhum servidor selecionado. Use a busca acima para encontrar o servidor responsável.
                       </div>
                     )}
                   </div>
@@ -657,7 +661,13 @@ export function RealCarenciaForm() {
 
         {/* Botão de ação: desabilitado se a unidade estiver homologada. */}
         <div className="flex justify-end">
-          <Button type="submit" disabled={isSelectedUnitHomologated} title={isSelectedUnitHomologated ? "Remova a homologação antes de preparar a carência" : undefined}>
+          <Button
+            type="submit"
+            disabled={isSelectedUnitHomologated}
+            title={isSelectedUnitHomologated ? "Remova a homologação antes de preparar a carência" : undefined}
+            className="px-6 py-2 text-sm inline-flex items-center gap-2"
+          >
+            <Check className="h-4 w-4" />
             Preparar Carência
           </Button>
         </div>
