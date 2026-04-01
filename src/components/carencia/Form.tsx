@@ -4,6 +4,7 @@ import React from "react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardAction } from "@/components/ui/card";
 import { CircleUserRound, X, Tag, Check, School } from "lucide-react";
 import { Label } from "@/components/ui/label";
+import Combobox from "@/components/ui/combobox";
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -33,24 +34,80 @@ export function RealCarenciaForm() {
   // IDs são `Date.now()` no exemplo; em produção prefira UUIDs ou ids do banco.
   const [rows, setRows] = React.useState<Array<any>>([]);
 
-  // Dados estáticos de exemplo para popular selects. Em integração real, buscar do servidor.
-  // Mantidos localmente aqui para simplificar a UI durante o desenvolvimento.
-  const disciplines = ["Matemática", "Português", "Ciências", "História", "Geografia"];
+  // Lista de disciplinas: carregada do servidor (tabela `disciplines` via API)
+  const [disciplines, setDisciplines] = React.useState<string[]>([]);
   const areas = ["Ensino Fundamental", "Ensino Médio", "Educação Infantil"];
   const motives = ["Substituição", "Aumento de carga", "Afastamento", "Licença"];
 
-  // Opções específicas para tipo profissionalizante
-  const cursos = ["Técnico em Informática", "Técnico em Administração", "Técnico em Enfermagem"];
-  const eixos = ["Tecnologia", "Gestão e Negócios", "Saúde"];
+  // Fetch disciplines from API on mount
+  React.useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const res = await fetch('/api/disciplines?pageSize=500');
+        if (!res.ok) return;
+        const json = await res.json();
+        if (!mounted) return;
+        const data = (json.data || []).map((d: any) => d.name);
+        setDisciplines(data);
+      } catch (err) {
+        console.error('Erro ao carregar disciplinas:', err);
+      }
+    })();
+    return () => { mounted = false; };
+  }, []);
 
   // Estados controlados para os campos do card "Dados da Carência".
-  // Inicializamos com string vazia para facilitar binding a controles HTML/Componentes.
   const [selectedDiscipline, setSelectedDiscipline] = React.useState<string>("");
   const [selectedArea, setSelectedArea] = React.useState<string>("");
   const [selectedMotive, setSelectedMotive] = React.useState<string>("");
   const [selectedDate, setSelectedDate] = React.useState<string>("");
   const [selectedCurso, setSelectedCurso] = React.useState<string>("");
   const [selectedEixo, setSelectedEixo] = React.useState<string>("");
+
+  // Eixos e cursos carregados da API (tabelas eixos/courses)
+  const [eixosList, setEixosList] = React.useState<Array<{ id: number; name: string }>>([]);
+  const [coursesList, setCoursesList] = React.useState<Array<{ id: number; name: string; eixo_id: number }>>([]);
+  const [loadingCourses, setLoadingCourses] = React.useState<boolean>(false);
+
+  // Carrega eixos uma vez ao montar
+  React.useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const res = await fetch('/api/eixos?pageSize=200');
+        if (!res.ok) return;
+        const json = await res.json();
+        if (!mounted) return;
+        setEixosList(json.data || []);
+      } catch (err) {
+        console.error('Erro ao carregar eixos:', err);
+      }
+    })();
+    return () => { mounted = false; };
+  }, []);
+
+  // Carrega todos os cursos ao montar (permitindo escolher o curso primeiro)
+  React.useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        setLoadingCourses(true);
+        const res = await fetch(`/api/courses?pageSize=500`);
+        if (!res.ok) return;
+        const json = await res.json();
+        if (!mounted) return;
+        setCoursesList(json.data || []);
+      } catch (err) {
+        console.error('Erro ao carregar cursos:', err);
+      } finally {
+        if (mounted) setLoadingCourses(false);
+      }
+    })();
+    return () => { mounted = false; };
+  }, []);
+
+  // Disciplina será controlada via Combobox (componente reutilizável)
 
   // Quantitativos por turno (MAT / VESP / NOT) e total dinâmico
   const [morningCount, setMorningCount] = React.useState<number>(0);
@@ -515,18 +572,8 @@ export function RealCarenciaForm() {
             {/* Grid responsivo: em telas maiores mostramos 4 colunas */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div>
-                {/* Disciplina: select que define a disciplina da vaga */}
                 <Label className="mb-2">Disciplina <span className="text-rose-500">*</span></Label>
-                <Select value={selectedDiscipline || undefined} onValueChange={(v) => setSelectedDiscipline(v ?? "")}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Selecione..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {disciplines.map((d) => (
-                      <SelectItem key={d} value={d}>{d}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Combobox options={disciplines} value={selectedDiscipline} onChange={(v) => setSelectedDiscipline(v)} placeholder="Pesquisar disciplina..." id="disciplina" />
               </div>
 
               <div>
@@ -571,13 +618,26 @@ export function RealCarenciaForm() {
               <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <Label className="mb-2">Curso <span className="text-rose-500">*</span></Label>
-                  <Select value={selectedCurso || undefined} onValueChange={(v) => setSelectedCurso(v ?? "")}>
+                  <Select
+                    value={selectedCurso || undefined}
+                    onValueChange={(v) => {
+                      const val = v ?? "";
+                      setSelectedCurso(val);
+                      const found = coursesList.find((c) => String(c.id) === val);
+                      if (found) {
+                        setSelectedEixo(String(found.eixo_id));
+                      } else {
+                        setSelectedEixo("");
+                      }
+                    }}
+                    disabled={loadingCourses}
+                  >
                     <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Selecione o curso" />
+                      <SelectValue placeholder={loadingCourses ? "Carregando..." : coursesList.length === 0 ? "Nenhum curso cadastrado" : "Selecione o curso"} />
                     </SelectTrigger>
                     <SelectContent>
-                      {cursos.map((c) => (
-                        <SelectItem key={c} value={c}>{c}</SelectItem>
+                      {coursesList.map((c) => (
+                        <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -585,16 +645,12 @@ export function RealCarenciaForm() {
 
                 <div>
                   <Label className="mb-2">Eixo <span className="text-rose-500">*</span></Label>
-                  <Select value={selectedEixo || undefined} onValueChange={(v) => setSelectedEixo(v ?? "")}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Selecione o eixo" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {eixos.map((e) => (
-                        <SelectItem key={e} value={e}>{e}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <input
+                    readOnly
+                    value={eixosList.find((e) => String(e.id) === selectedEixo)?.name ?? ""}
+                    placeholder={eixosList.length === 0 ? "Carregando..." : "Escolha um curso"}
+                    className="w-full rounded-md border px-2 py-1 bg-gray-50 text-muted-foreground"
+                  />
                 </div>
               </div>
             )}

@@ -98,6 +98,23 @@ model Discipline {
   @@map("disciplines")
 }
 
+model Eixo {
+  id      Int      @id @default(autoincrement())
+  name    String
+  courses Course[]
+
+  @@map("eixos")
+}
+
+model Course {
+  id     Int   @id @default(autoincrement())
+  name   String
+  eixo_id Int
+  eixo   Eixo  @relation(fields: [eixo_id], references: [id])
+
+  @@map("courses")
+}
+
 model Typology {
   id    Int          @id @default(autoincrement())
   name  String
