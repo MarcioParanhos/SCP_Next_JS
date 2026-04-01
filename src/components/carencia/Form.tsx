@@ -618,38 +618,37 @@ export function RealCarenciaForm() {
               <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <Label className="mb-2">Curso <span className="text-rose-500">*</span></Label>
-                  <Select
-                    value={selectedCurso || undefined}
-                    onValueChange={(v) => {
-                      const val = v ?? "";
-                      setSelectedCurso(val);
-                      const found = coursesList.find((c) => String(c.id) === val);
+                  {/* Combobox reutilizável para escolher o curso por nome.
+                      Observação: armazenamos o nome do curso em `selectedCurso` (igual ao comportamento da disciplina),
+                      e preenchemos automaticamente `selectedEixo` buscando o `eixo_id` do curso selecionado. */}
+                  <Combobox
+                    options={coursesList.map((c) => c.name)}
+                    value={selectedCurso}
+                    onChange={(v) => {
+                      // Quando o usuário seleciona um curso (pelo nome), atualizamos o estado
+                      // do curso selecionado e procuramos seu eixo para preencher o campo de Eixo.
+                      setSelectedCurso(v);
+                      const found = coursesList.find((c) => c.name === v);
                       if (found) {
                         setSelectedEixo(String(found.eixo_id));
                       } else {
                         setSelectedEixo("");
                       }
                     }}
-                    disabled={loadingCourses}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder={loadingCourses ? "Carregando..." : coursesList.length === 0 ? "Nenhum curso cadastrado" : "Selecione o curso"} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {coursesList.map((c) => (
-                        <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    placeholder={loadingCourses ? "Carregando..." : coursesList.length === 0 ? "Nenhum curso cadastrado" : "Pesquisar curso..."}
+                    id="curso"
+                  />
                 </div>
 
                 <div>
-                  <Label className="mb-2">Eixo <span className="text-rose-500">*</span></Label>
+                  <Label className="mb-2">Eixo</Label>
+                  {/* Campo somente leitura que mostra o nome do eixo do curso selecionado.
+                      Estilizado com `text-sm` para combinar com os outros inputs do formulário. */}
                   <input
                     readOnly
                     value={eixosList.find((e) => String(e.id) === selectedEixo)?.name ?? ""}
                     placeholder={eixosList.length === 0 ? "Carregando..." : "Escolha um curso"}
-                    className="w-full rounded-md border px-2 py-1 bg-gray-50 text-muted-foreground"
+                    className="w-full rounded-md border px-4 py-3 text-sm bg-transparent text-foreground"
                   />
                 </div>
               </div>
