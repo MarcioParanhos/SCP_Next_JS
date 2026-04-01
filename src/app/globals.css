@@ -116,7 +116,8 @@
   --chart-3: oklch(0.398 0.07 227.392);
   --chart-4: oklch(0.828 0.189 84.429);
   --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: hsl(0 0% 98%);
+  /* sidebar: faintly inherit the current theme primary color */
+  --sidebar: color-mix(in srgb, var(--primary) 8%, white);
   --sidebar-foreground: hsl(240 5.3% 26.1%);
   --sidebar-primary: hsl(240 5.9% 10%);
   --sidebar-primary-foreground: hsl(0 0% 98%);
@@ -150,7 +151,8 @@
   --chart-3: oklch(0.769 0.188 70.08);
   --chart-4: oklch(0.627 0.265 303.9);
   --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: hsl(240 5.9% 10%);
+  /* dark mode: faint variant of primary on dark background */
+  --sidebar: color-mix(in srgb, var(--primary) 6%, hsl(0 0% 0%));
   --sidebar-foreground: hsl(240 4.8% 95.9%);
   --sidebar-primary: hsl(224.3 76.3% 48%);
   --sidebar-primary-foreground: hsl(0 0% 100%);
@@ -171,6 +173,14 @@
 
 body {
   @apply overscroll-none bg-transparent;
+}
+
+/* Theme-aware table header background (very faint) */
+.table-head-theme {
+  background-color: color-mix(in srgb, var(--primary) 8%, white);
+}
+.dark .table-head-theme {
+  background-color: color-mix(in srgb, var(--primary) 6%, hsl(0 0% 0%));
 }
 
 /* Cursor pointer para elementos interativos comuns
