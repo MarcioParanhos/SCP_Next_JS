@@ -41,8 +41,12 @@ export function RealCarenciaForm() {
   // Lista de disciplinas: carregada do servidor (tabela `disciplines` via API)
   // Agora armazenamos objetos `{ id, name }` para permitir enviar o id selecionado.
   const [disciplines, setDisciplines] = React.useState<Array<{ id: number; name: string }>>([]);
-  const areas = ["Ensino Fundamental", "Ensino Médio", "Educação Infantil"];
-  const motives = ["Substituição", "Aumento de carga", "Afastamento", "Licença"];
+  // Áreas carregadas do banco
+  const [areasList, setAreasList] = React.useState<Array<{ id: number; code: string; name: string }>>([]);
+  const [loadingAreas, setLoadingAreas] = React.useState<boolean>(true);
+  // Motivos carregados do banco (via /api/motives). Cada motivo tem: id, code, description, type
+  const [motivesList, setMotivesList] = React.useState<Array<{ id: number; code: string; description: string; type: string }>>([]);
+  const [loadingMotives, setLoadingMotives] = React.useState<boolean>(true);
 
   // Fetch disciplines from API on mount
   React.useEffect(() => {
@@ -69,6 +73,8 @@ export function RealCarenciaForm() {
   const [selectedDisciplineId, setSelectedDisciplineId] = React.useState<number | null>(null);
   const [selectedArea, setSelectedArea] = React.useState<string>("");
   const [selectedMotive, setSelectedMotive] = React.useState<string>("");
+  // Guarda também o id do motivo selecionado para persistência no banco
+  const [selectedMotiveId, setSelectedMotiveId] = React.useState<number | null>(null);
   const [selectedDate, setSelectedDate] = React.useState<string>("");
   const [selectedCurso, setSelectedCurso] = React.useState<string>("");
   // Armazenamos também o id do curso selecionado (útil para envio ao backend).
@@ -92,6 +98,46 @@ export function RealCarenciaForm() {
         setEixosList(json.data || []);
       } catch (err) {
         console.error('Erro ao carregar eixos:', err);
+      }
+    })();
+    return () => { mounted = false; };
+  }, []);
+
+  // Carrega áreas do banco
+  React.useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        setLoadingAreas(true);
+        const res = await fetch('/api/areas');
+        if (!res.ok) return;
+        const json = await res.json();
+        if (!mounted) return;
+        setAreasList(json.data || []);
+      } catch (err) {
+        console.error('Erro ao carregar areas:', err);
+      } finally {
+        if (mounted) setLoadingAreas(false);
+      }
+    })();
+    return () => { mounted = false; };
+  }, []);
+
+  // Carrega motivos do banco na montagem
+  React.useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        setLoadingMotives(true);
+        const res = await fetch('/api/motives');
+        if (!res.ok) return;
+        const json = await res.json();
+        if (!mounted) return;
+        setMotivesList(json.data || []);
+      } catch (err) {
+        console.error('Erro ao carregar motivos:', err);
+      } finally {
+        if (mounted) setLoadingMotives(false);
       }
     })();
     return () => { mounted = false; };
@@ -128,6 +174,17 @@ export function RealCarenciaForm() {
   // Tipo de carência selecionado (controla abas). Usamos a mesma base de form
   // para todos os tipos — abas apenas alteram o 'tipo' que será enviado.
   const [tipo, setTipo] = React.useState<string>("basica");
+
+  // Ao mudar de aba, limpamos campos específicos que pertencem apenas a uma aba
+  // (por exemplo: `curso` e `eixo` da aba 'profissionalizante') para evitar
+  // que valores residuais sejam enviados posteriormente.
+  React.useEffect(() => {
+    if (tipo !== 'profissionalizante') {
+      setSelectedCurso("");
+      setSelectedCursoId(null);
+      setSelectedEixo("");
+    }
+  }, [tipo]);
 
   // Estados para seleção do servidor que gerou a carência
   // `servers`: lista simples carregada via API (página única)
@@ -231,10 +288,6 @@ export function RealCarenciaForm() {
         if (!mounted) return;
         const list = json.data || [];
         setServers(list);
-        if (list.length > 0) {
-          setSelectedServer(String(list[0].id));
-          setSelectedServerData(list[0]);
-        }
       } catch (err) {
         console.error(err);
         // não mostramos toast extra aqui para evitar spam caso a rota não exista em dev
@@ -323,12 +376,21 @@ export function RealCarenciaForm() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     // Monta o payload incluindo ids quando disponíveis (disciplina e curso)
+    const areaObj = areasList.find((a) => String(a.id) === String(selectedArea));
     const payload: any = {
       unitId: selectedUnit,
       serverId: selectedServer,
       discipline: { id: selectedDisciplineId, name: selectedDiscipline },
-      area: selectedArea,
-      motive: selectedMotive,
+      area: {
+        id: areaObj ? areaObj.id : null,
+        code: areaObj ? areaObj.code : null,
+        name: areaObj ? areaObj.name : null,
+      },
+      motive: {
+        id: selectedMotiveId,
+        code: selectedMotive,
+        description: motivesList.find((m) => m.code === selectedMotive)?.description ?? null,
+      },
       startDate: selectedDate,
       rows,
     };
@@ -502,8 +564,9 @@ export function RealCarenciaForm() {
                     <SelectValue placeholder="Selecione..." />
                   </SelectTrigger>
                   <SelectContent>
-                    {areas.map((a) => (
-                      <SelectItem key={a} value={a}>{a}</SelectItem>
+                    {loadingAreas && <div className="p-2 text-sm text-muted-foreground">Carregando...</div>}
+                    {!loadingAreas && areasList.map((a) => (
+                      <SelectItem key={a.code} value={String(a.id)}>{a.name}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -512,14 +575,25 @@ export function RealCarenciaForm() {
               <div>
                 {/* Motivo da Carência: escolha entre substituição, licença, etc. */}
                 <Label className="mb-2">Motivo da Carência <span className="text-rose-500">*</span></Label>
-                <Select value={selectedMotive || undefined} onValueChange={(v) => setSelectedMotive(v ?? "")}>
+                <Select value={selectedMotive || undefined} onValueChange={(v) => {
+                  const code = v ?? "";
+                  setSelectedMotive(code);
+                  const found = motivesList.find((m) => m.code === code);
+                  setSelectedMotiveId(found ? found.id : null);
+                }}>
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder="Selecione..." />
                   </SelectTrigger>
                   <SelectContent>
-                    {motives.map((m) => (
-                      <SelectItem key={m} value={m}>{m}</SelectItem>
-                    ))}
+                    {loadingMotives && <div className="p-2 text-sm text-muted-foreground">Carregando...</div>}
+                    {!loadingMotives && (
+                      <div>
+                        {/* Este formulário é usado para Carência Real — mostrar apenas motivos REAL */}
+                        {motivesList.filter((m) => m.type === 'REAL').map((m) => (
+                          <SelectItem key={m.code} value={m.code}>{m.description}</SelectItem>
+                        ))}
+                      </div>
+                    )}
                   </SelectContent>
                 </Select>
               </div>

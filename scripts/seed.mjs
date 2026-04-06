@@ -28,6 +28,25 @@ async function main(){
       console.log('Typology exists:', found.name);
     }
   }
+
+  // --- Inserir motivos de carência iniciais ---
+  const motives = [
+    { code: 'SUBSTITUICAO', description: 'Substituição de docente', type: 'REAL' },
+    { code: 'AUMENTO_CARGA', description: 'Aumento de carga', type: 'REAL' },
+    { code: 'AFASTAMENTO', description: 'Afastamento', type: 'REAL' },
+    { code: 'LICENCA', description: 'Licença', type: 'TEMPORARY' },
+    { code: 'LICENCA_MEDICA', description: 'Licença médica', type: 'TEMPORARY' }
+  ];
+
+  for (const m of motives) {
+    const found = await prisma.motive.findFirst({ where: { code: m.code } });
+    if (!found) {
+      const created = await prisma.motive.create({ data: { code: m.code, description: m.description, type: m.type } });
+      console.log('Created motive:', created.code);
+    } else {
+      console.log('Motive exists:', found.code);
+    }
+  }
 }
 
 main()
