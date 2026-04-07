@@ -27,6 +27,9 @@ const LABELS: Record<string, string> = {
   motivos: "Motivos de Carência",
   areas: "Áreas",
   disciplinas: "Disciplinas",
+  cursos: "Cursos",
+  // Suporte para rota em inglês `/courses`
+  courses: "Cursos",
   login: "Login",
 }
 

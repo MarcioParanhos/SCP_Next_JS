@@ -58,6 +58,12 @@ const categorias = [
         href: "/config/listas/motivos",
         icone: <Settings2 className="size-4" />,
       },
+      {
+        titulo: "Cursos",
+        descricao: "Cursos utilizados nos formulários",
+        href: "/config/listas/courses",
+        icone: <FileText className="size-4" />,
+      },
     ],
   },
 ];
@@ -120,7 +126,7 @@ export function ListsPanel({
               <AccordionTrigger className="group hover:no-underline px-5 py-4 rounded-t-xl rounded-b-none bg-gradient-to-r from-primary/5 to-transparent hover:from-primary/6 transition-colors border-b data-[state=open]:border-b data-[state=closed]:border-b-0 outline-none focus-visible:ring-2 focus-visible:ring-primary/10 [&[data-state=open]>svg]:rotate-90">
                 <div className="flex items-center gap-3 flex-1">
                   {/* Ícone dentro de um círculo no tom primário */}
-                  <div className="flex items-center justify-center size-9 rounded-full bg-primary/15 text-primary shrink-0 ring-1 ring-primary/10">
+                  <div className="flex items-center justify-center size-9 rounded-full bg-primary text-white shrink-0 ring-1 ring-primary">
                     {categoria.icone}
                   </div>
                   <div className="text-left">

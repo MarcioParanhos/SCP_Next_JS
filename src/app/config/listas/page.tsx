@@ -7,7 +7,7 @@ import { AppSidebar } from "@/components/layout/app-sidebar";
 import { SiteHeader } from "@/components/site-header";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { ListsPanel } from "@/components/admin/lists/ListsPanel";
-import { BookOpen, Tag, FileText, Settings2 } from "lucide-react";
+import { Users, Tag, FileText, Settings2 } from "lucide-react";
 
 export default function ListasSuspensasPage() {
   return (
@@ -37,12 +37,13 @@ export default function ListasSuspensasPage() {
                 {
                   value: "carencia",
                   titulo: "Carência",
-                  icone: <BookOpen className="size-4 shrink-0" />,
+                  icone: <Users className="size-6 shrink-0 text-white" />,
                   descricao: "Listas utilizadas nos formulários de carência",
                   itens: [
                     { titulo: "Áreas", descricao: "Áreas pedagógicas de carência", href: "/config/listas/areas", icone: <Tag className="size-4" /> },
                     { titulo: "Disciplinas", descricao: "Disciplinas / componentes curriculares", href: "/config/listas/disciplinas", icone: <FileText className="size-4" /> },
                     { titulo: "Motivos de Carência", descricao: "Motivos de carência real e temporária", href: "/config/listas/motivos", icone: <Settings2 className="size-4" /> },
+                    { titulo: "Cursos", descricao: "Cursos utilizados nos formulários", href: "/config/listas/courses", icone: <FileText className="size-4" /> },
                   ],
                 },
               ]}
