@@ -7,6 +7,7 @@ import { SiteHeader } from "@/components/site-header";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { AreasDataTable } from "@/components/admin/lists/areas/AreasDataTable";
 
+
 export default function AreasPage() {
   return (
     <SidebarProvider

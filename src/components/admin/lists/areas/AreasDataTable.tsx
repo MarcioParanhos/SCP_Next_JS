@@ -6,7 +6,8 @@
 // - Usa shadcn/ui: Table, Dialog, Input, Button, Badge
 
 import * as React from "react";
-import { Pencil, Plus, Trash2, RotateCcw, MoreVertical } from "lucide-react";
+import { Pencil, Plus, Trash2, RotateCcw, MoreVertical, Undo2 } from "lucide-react";
+import Link from "next/link";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -205,10 +206,29 @@ export function AreasDataTable() {
           onChange={(e) => setBusca(e.target.value)}
           className="max-w-sm"
         />
-        <Button onClick={abrirCriacao} size="sm">
-          <Plus className="mr-2 size-4" />
-          Nova Área
-        </Button>
+        <div className="flex items-center gap-2">
+          <Link href="/config/listas">
+            <Button variant="default" size="icon" aria-label="Voltar para Listas Suspensas">
+              <Undo2 className="size-4" />
+            </Button>
+          </Link>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="default" size="icon" className="flex items-center justify-center" aria-label="Abrir opções">
+                <MoreVertical />
+                <span className="sr-only">Abrir opções</span>
+              </Button>
+            </DropdownMenuTrigger>
+
+            <DropdownMenuContent align="end" className="w-36">
+              <DropdownMenuItem onClick={abrirCriacao}>
+                <Plus className="size-4" /> Nova Área
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          
+        </div>
       </div>
 
       {/* Tabela de áreas */}
@@ -243,7 +263,10 @@ export function AreasDataTable() {
                   <TableCell className="font-mono text-sm font-semibold">{area.code}</TableCell>
                   <TableCell>{area.name}</TableCell>
                   <TableCell className="text-center">
-                    <Badge variant={area.active ? "default" : "destructive"}>
+                    <Badge
+                      variant={area.active ? "default" : "destructive"}
+                      className="w-[100px] justify-center"
+                    >
                       {area.active ? "Ativa" : "Inativa"}
                     </Badge>
                   </TableCell>
