@@ -6,7 +6,7 @@
 // - Usa shadcn/ui: Table, Dialog, Input, Button, Badge
 
 import * as React from "react";
-import { Pencil, Plus, Trash2, RotateCcw, MoreVertical, Undo2 } from "lucide-react";
+import { Pencil, Plus, Trash2, RotateCcw, MoreVertical, Undo2, Search } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 
@@ -200,12 +200,17 @@ export function AreasDataTable() {
     <div className="space-y-4">
       {/* Barra de ações: busca e botão de nova área */}
       <div className="flex items-center justify-between gap-4">
-        <Input
-          placeholder="Buscar por código ou nome..."
-          value={busca}
-          onChange={(e) => setBusca(e.target.value)}
-          className="max-w-sm"
-        />
+        <div className="relative flex-1 min-w-0">
+          <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-muted-foreground pointer-events-none">
+            <Search className="size-4" />
+          </span>
+          <Input
+            placeholder="Buscar por código ou nome..."
+            value={busca}
+            onChange={(e) => setBusca(e.target.value)}
+            className="pl-10 w-full"
+          />
+        </div>
         <div className="flex items-center gap-2">
           <Link href="/config/listas">
             <Button variant="default" size="icon" aria-label="Voltar para Listas Suspensas">
@@ -276,7 +281,7 @@ export function AreasDataTable() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="data-[state=open]:bg-muted text-muted-foreground flex items-center justify-center size-8"
+                          className="data-[state=open]:bg-muted text-muted-foreground flex items-center justify-center size-8 mr-2"
                         >
                           <MoreVertical />
                           <span className="sr-only">Abrir menu</span>
