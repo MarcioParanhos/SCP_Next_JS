@@ -238,7 +238,7 @@ export function AreasDataTable() {
             <TableRow>
               <TableHead className="w-24">Código</TableHead>
               <TableHead>Nome</TableHead>
-              <TableHead className="w-24 text-center">Status</TableHead>
+              <TableHead className="w-24 text-right">Status</TableHead>
               <TableHead className="w-28 text-right">Ações</TableHead>
             </TableRow>
           </TableHeader>
@@ -259,13 +259,13 @@ export function AreasDataTable() {
               </TableRow>
             ) : (
               areasFiltradas.map((area) => (
-                <TableRow key={area.id} className={!area.active ? "opacity-50" : ""}>
+                <TableRow key={area.id} className={`${!area.active ? "opacity-80" : ""} h-14 align-middle`}>
                   <TableCell className="font-mono text-sm font-semibold">{area.code}</TableCell>
                   <TableCell>{area.name}</TableCell>
-                  <TableCell className="text-center">
+                  <TableCell className="text-right">
                     <Badge
                       variant={area.active ? "default" : "destructive"}
-                      className="w-[100px] justify-center"
+                      className="w-[80px] justify-center"
                     >
                       {area.active ? "Ativa" : "Inativa"}
                     </Badge>

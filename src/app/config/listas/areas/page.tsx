@@ -22,7 +22,7 @@ export default function AreasPage() {
         <div className="p-6">
           {/* Cabeçalho da página */}
           <h1 className="mb-1 scroll-m-20 text-3xl font-bold tracking-tight">Áreas</h1>
-          <p className="mb-6 text-muted-foreground text-sm">
+          <p className="mb-6 text-muted-foreground/90 text-sm">
             Gerencie as áreas pedagógicas utilizadas nos formulários de carência.
           </p>
           {/* Tabela interativa com ações de CRUD */}
