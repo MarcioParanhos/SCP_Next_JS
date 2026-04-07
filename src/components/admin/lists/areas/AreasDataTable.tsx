@@ -323,7 +323,7 @@ export function AreasDataTable() {
               <Label htmlFor="code">Código</Label>
               <Input
                 id="code"
-                placeholder="Ex: MAT"
+                placeholder="Ex: ARE-MAT"
                 value={form.code}
                 onChange={(e) => setForm((f) => ({ ...f, code: e.target.value }))}
                 maxLength={20}
@@ -335,7 +335,7 @@ export function AreasDataTable() {
               <Label htmlFor="name">Nome</Label>
               <Input
                 id="name"
-                placeholder="Ex: Matemática"
+                placeholder="Ex: Matemática (Área)"
                 value={form.name}
                 onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
                 maxLength={120}
