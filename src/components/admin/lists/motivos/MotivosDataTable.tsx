@@ -7,13 +7,21 @@
 // - Inclui filtro por tipo e busca por texto
 
 import * as React from "react";
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { Pencil, Plus, Trash2, RotateCcw, MoreVertical, Undo2, Search } from "lucide-react";
+import Link from "next/link";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 import {
   Dialog,
   DialogContent,
@@ -171,6 +179,33 @@ export function MotivosDataTable() {
     }
   }
 
+  // Reativa um motivo previamente desativado
+  async function reativar(motivo: Motivo) {
+    try {
+      const res = await fetch(`/api/motives/${motivo.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          code: motivo.code,
+          description: motivo.description,
+          type: motivo.type,
+          active: true,
+        }),
+      });
+
+      const json = await res.json();
+      if (!res.ok) {
+        toast.error(json.error ?? "Erro ao reativar o motivo.");
+        return;
+      }
+
+      toast.success("Motivo reativado com sucesso!");
+      setMotivos((prev) => prev.map((m) => (m.id === motivo.id ? { ...m, active: true } : m)));
+    } catch {
+      toast.error("Erro de conexão. Tente novamente.");
+    }
+  }
+
   // Aplica filtro combinado de texto e tipo
   const motivosFiltrados = motivos.filter((m) => {
     const matchTexto =
@@ -187,36 +222,60 @@ export function MotivosDataTable() {
 
   return (
     <div className="space-y-4">
-      {/* Barra de ações: busca, filtro de tipo e botão de novo motivo */}
-      <div className="flex flex-wrap items-center gap-3 justify-between">
-        <div className="flex items-center gap-2 flex-wrap">
-          <Input
-            placeholder="Buscar por código ou descrição..."
-            value={busca}
-            onChange={(e) => setBusca(e.target.value)}
-            className="w-72"
-          />
-          {/* Filtro por tipo de carência */}
-          <Select
-            value={filtroTipo || "todos"}
-            onValueChange={(v) => setFiltroTipo(v === "todos" ? "" : (v as "REAL" | "TEMPORARY"))}
-          >
-            <SelectTrigger className="w-44">
-              <SelectValue placeholder="Todos os tipos" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todos">Todos os tipos</SelectItem>
-              <SelectItem value="REAL">Real</SelectItem>
-              <SelectItem value="TEMPORARY">Temporária</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+          {/* Barra de ações: busca, filtro de tipo, voltar e menu de opções */}
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-2 flex-wrap flex-1 min-w-0">
+              <div className="relative flex-1 min-w-0">
+                <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-muted-foreground pointer-events-none">
+                  <Search className="size-4" />
+                </span>
+                <Input
+                  placeholder="Buscar por código ou descrição..."
+                  value={busca}
+                  onChange={(e) => setBusca(e.target.value)}
+                  className="pl-10 w-full"
+                />
+              </div>
 
-        <Button onClick={abrirCriacao} size="sm">
-          <Plus className="mr-2 size-4" />
-          Novo Motivo
-        </Button>
-      </div>
+              {/* Filtro por tipo de carência */}
+              <Select
+                value={filtroTipo || "todos"}
+                onValueChange={(v) => setFiltroTipo(v === "todos" ? "" : (v as "REAL" | "TEMPORARY"))}
+              >
+                <SelectTrigger className="w-44">
+                  <SelectValue placeholder="Todos os tipos" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todos os tipos</SelectItem>
+                  <SelectItem value="REAL">Real</SelectItem>
+                  <SelectItem value="TEMPORARY">Temporária</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Link href="/config/listas">
+                <Button variant="default" size="icon" aria-label="Voltar para Listas Suspensas">
+                  <Undo2 className="size-4" />
+                </Button>
+              </Link>
+
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="default" size="icon" className="flex items-center justify-center" aria-label="Abrir opções">
+                    <MoreVertical />
+                    <span className="sr-only">Abrir opções</span>
+                  </Button>
+                </DropdownMenuTrigger>
+
+                <DropdownMenuContent align="end" className="w-36">
+                  <DropdownMenuItem onClick={abrirCriacao}>
+                    <Plus className="size-4" /> Nova Motivo
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </div>
 
       {/* Tabela de motivos */}
       <div className="rounded-md border">
@@ -224,10 +283,10 @@ export function MotivosDataTable() {
           <TableHeader>
             <TableRow>
               <TableHead className="w-24">Código</TableHead>
-              <TableHead>Descrição</TableHead>
+              <TableHead>Nome do motivo</TableHead>
               <TableHead className="w-32 text-center">Tipo</TableHead>
               <TableHead className="w-24 text-center">Status</TableHead>
-              <TableHead className="w-28 text-right">Ações</TableHead>
+              <TableHead className="w-28 text-right pr-4">Ações</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -245,45 +304,50 @@ export function MotivosDataTable() {
               </TableRow>
             ) : (
               motivosFiltrados.map((m) => (
-                <TableRow key={m.id} className={!m.active ? "opacity-50" : ""}>
+                <TableRow key={m.id} className={`${!m.active ? "opacity-80" : ""} h-14 align-middle`}>
                   <TableCell className="font-mono text-sm font-semibold">{m.code}</TableCell>
                   <TableCell>{m.description}</TableCell>
                   <TableCell className="text-center">
-                    {/* Badge colorido para distinguir visualmente os tipos de carência */}
-                    <Badge
-                      variant={m.type === "REAL" ? "default" : "secondary"}
-                      className={m.type === "REAL" ? "bg-blue-600 hover:bg-blue-600" : ""}
-                    >
+                    <Badge variant="default" className="w-[90px] justify-center">
                       {labelTipo(m.type)}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-center">
-                    <Badge variant={m.active ? "default" : "secondary"}>
+                    <Badge variant={m.active ? "default" : "destructive"} className="w-[80px] justify-center">
                       {m.active ? "Ativo" : "Inativo"}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-right space-x-1">
-                    {/* Botão editar */}
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => abrirEdicao(m)}
-                      title="Editar motivo"
-                    >
-                      <Pencil className="size-4" />
-                    </Button>
-                    {/* Botão desativar — só para motivos ativos */}
-                    {m.active && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setDesativandoId(m.id)}
-                        title="Desativar motivo"
-                        className="text-destructive hover:text-destructive"
-                      >
-                        <Trash2 className="size-4" />
-                      </Button>
-                    )}
+                  <TableCell className="text-right pr-4">
+                    <div className="flex items-center justify-end">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="data-[state=open]:bg-muted text-muted-foreground flex items-center justify-center size-8 mr-2"
+                        >
+                          <MoreVertical />
+                          <span className="sr-only">Abrir menu</span>
+                        </Button>
+                      </DropdownMenuTrigger>
+
+                      <DropdownMenuContent align="end" className="w-36">
+                        <DropdownMenuItem onClick={() => abrirEdicao(m)}>
+                          <Pencil className="size-4" /> Editar
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        {m.active ? (
+                          <DropdownMenuItem onClick={() => setDesativandoId(m.id)} className="text-destructive">
+                            <Trash2 className="size-4" /> Desativar
+                          </DropdownMenuItem>
+                        ) : (
+                          <DropdownMenuItem onClick={() => reativar(m)} className="text-primary">
+                            <RotateCcw className="size-4" /> Reativar
+                          </DropdownMenuItem>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))
@@ -329,9 +393,9 @@ export function MotivosDataTable() {
               </Select>
             </div>
 
-            {/* Campo: Descrição do motivo */}
+            {/* Campo: Nome do motivo (anteriormente 'Descrição') */}
             <div className="space-y-1">
-              <Label htmlFor="mdesc">Descrição</Label>
+              <Label htmlFor="mdesc">Nome do motivo</Label>
               <Input
                 id="mdesc"
                 placeholder="Ex: Inexistência de professor habilitado"
