@@ -29,7 +29,32 @@ export async function GET(req: Request) {
     const data = rows.map((r) => ({ id: r.id, name: r.name }));
     return NextResponse.json({ data, nextCursor: null, hasNext: false });
   } catch (err) {
-    console.error("Error in GET /api/disciplines:", err);
-    return new NextResponse("Internal Server Error", { status: 500 });
+    console.error("Erro em GET /api/disciplines:", err);
+    return new NextResponse("Erro interno do servidor", { status: 500 });
+  }
+}
+
+// Cria uma nova disciplina / componente curricular
+export async function POST(req: Request) {
+  try {
+    const body = await req.json();
+    const { name } = body;
+
+    // Validação: nome é obrigatório
+    if (!name || String(name).trim().length === 0) {
+      return NextResponse.json(
+        { error: "O campo 'name' é obrigatório." },
+        { status: 400 }
+      );
+    }
+
+    const discipline = await prisma.discipline.create({
+      data: { name: String(name).trim() },
+    });
+
+    return NextResponse.json({ data: discipline }, { status: 201 });
+  } catch (err) {
+    console.error("Erro em POST /api/disciplines:", err);
+    return new NextResponse("Erro interno do servidor", { status: 500 });
   }
 }

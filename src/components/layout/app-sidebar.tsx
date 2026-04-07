@@ -61,7 +61,8 @@ const data = {
       title: "CONFIGURAÇÕES",
       url: "#",
       icon: Cog,
-      items: [{ title: "Listas Suspensas", url: "#" }],
+      // "Listas Suspensas" aponta para o painel de administração das listas de domínio
+      items: [{ title: "Listas Suspensas", url: "/config/listas" }],
     },
     {
       title: "ADMINISTRAÇÃO",

@@ -22,6 +22,8 @@ const LABELS: Record<string, string> = {
   carencia: "Carência",
   temporaria: "Temporária",
   real: "Real",
+  config: "Configurações",
+  listas: "Listas Suspensas",
   login: "Login",
 }
 

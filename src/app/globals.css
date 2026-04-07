@@ -199,6 +199,25 @@ body {
   --header-height: calc(var(--spacing) * 12 + 1px);
 }
 
+/* ===== Animações do componente Accordion (shadcn/ui) =====
+   O Radix UI expõe a variável --radix-accordion-content-height durante a animação.
+   As classes `animate-accordion-down` e `animate-accordion-up` são usadas em accordion.tsx. */
+@keyframes accordion-down {
+  from { height: 0; }
+  to   { height: var(--radix-accordion-content-height); }
+}
+
+@keyframes accordion-up {
+  from { height: var(--radix-accordion-content-height); }
+  to   { height: 0; }
+}
+
+@theme inline {
+  --animate-accordion-down: accordion-down 0.2s ease-out;
+  --animate-accordion-up:   accordion-up   0.2s ease-out;
+}
+/* ========================================================= */
+
 .theme-scaled {
   @media (min-width: 1024px) {
     --radius: 0.6rem;
