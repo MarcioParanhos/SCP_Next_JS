@@ -6,13 +6,20 @@
 // - Usa shadcn/ui: Table, Dialog, Input, Button, Badge
 
 import * as React from "react";
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { Pencil, Plus, Trash2, RotateCcw, MoreVertical } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 import {
   Dialog,
   DialogContent,
@@ -159,6 +166,28 @@ export function AreasDataTable() {
     }
   }
 
+  // Reativa uma área previamente desativada
+  async function reativar(area: Area) {
+    try {
+      const res = await fetch(`/api/areas/${area.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: area.code, name: area.name, active: true }),
+      });
+
+      const json = await res.json();
+      if (!res.ok) {
+        toast.error(json.error ?? "Erro ao reativar a área.");
+        return;
+      }
+
+      toast.success("Área reativada com sucesso!");
+      setAreas((prev) => prev.map((a) => (a.id === area.id ? { ...a, active: true } : a)));
+    } catch {
+      toast.error("Erro de conexão. Tente novamente.");
+    }
+  }
+
   // Filtra as áreas pelo texto digitado no campo de busca (código ou nome)
   const areasFiltradas = areas.filter(
     (a) =>
@@ -214,32 +243,42 @@ export function AreasDataTable() {
                   <TableCell className="font-mono text-sm font-semibold">{area.code}</TableCell>
                   <TableCell>{area.name}</TableCell>
                   <TableCell className="text-center">
-                    <Badge variant={area.active ? "default" : "secondary"}>
+                    <Badge variant={area.active ? "default" : "destructive"}>
                       {area.active ? "Ativa" : "Inativa"}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-right space-x-1">
-                    {/* Botão editar */}
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => abrirEdicao(area)}
-                      title="Editar área"
-                    >
-                      <Pencil className="size-4" />
-                    </Button>
-                    {/* Botão desativar — só exibido para áreas ativas */}
-                    {area.active && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setDesativandoId(area.id)}
-                        title="Desativar área"
-                        className="text-destructive hover:text-destructive"
-                      >
-                        <Trash2 className="size-4" />
-                      </Button>
-                    )}
+                  <TableCell className="text-right flex items-center justify-end">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="data-[state=open]:bg-muted text-muted-foreground flex items-center justify-center size-8"
+                        >
+                          <MoreVertical />
+                          <span className="sr-only">Abrir menu</span>
+                        </Button>
+                      </DropdownMenuTrigger>
+
+                      <DropdownMenuContent align="end" className="w-36">
+                        <DropdownMenuItem onClick={() => abrirEdicao(area)}>
+                          <Pencil className="size-4" /> Editar
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        {area.active ? (
+                          <DropdownMenuItem
+                            onClick={() => setDesativandoId(area.id)}
+                            className="text-destructive"
+                          >
+                            <Trash2 className="size-4" /> Desativar
+                          </DropdownMenuItem>
+                        ) : (
+                          <DropdownMenuItem onClick={() => reativar(area)} className="text-primary">
+                            <RotateCcw className="size-4" /> Reativar
+                          </DropdownMenuItem>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </TableCell>
                 </TableRow>
               ))
