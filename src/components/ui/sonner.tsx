@@ -1,44 +1,19 @@
 "use client";
 
+// Usa o Toaster oficial da lib `sonner`, que é compatível com as chamadas
+// `toast.success(...)` / `toast.error(...)` feitas em todos os componentes.
 import { useTheme } from "next-themes";
-import { Toaster as HotToaster } from "react-hot-toast";
+import { Toaster as SonnerToaster } from "sonner";
 
-const Toaster = (props: any) => {
+const Toaster = (props: React.ComponentProps<typeof SonnerToaster>) => {
   const { theme = "system" } = useTheme();
 
   return (
-    <HotToaster
-      position="top-center"
-      containerStyle={{
-        // Container neutro para as toasts; os estilos específicos são aplicados
-        // em `toastOptions` abaixo (sucesso, erro, etc.).
-      }}
-      toastOptions={{
-        // duração padrão para toasts (em milissegundos)
-        duration: 8000,
-        // estilo padrão (usa variáveis CSS definidas em src/app/globals.css)
-        style: {
-          background: "var(--popover)",
-          color: "var(--popover-foreground)",
-          border: "1px solid var(--border)",
-          borderRadius: "var(--radius)",
-        },
-        // configurações específicas por tipo (success/error) abaixo
-        success: {
-          duration: 5000,
-          style: {
-            background: "var(--toast-success-bg, #ffffff)",
-            color: "var(--toast-success-text, #09122C)",
-          },
-        },
-        error: {
-          duration: 8000,
-          style: {
-            background: "var(--toast-error-bg, #ffffff)",
-            color: "var(--toast-error-text, #09122C)",
-          },
-        },
-      }}
+    <SonnerToaster
+      theme={theme as React.ComponentProps<typeof SonnerToaster>["theme"]}
+      position="top-right"
+      richColors
+      closeButton
       {...props}
     />
   );

@@ -6,12 +6,20 @@
 // - A disciplina não tem campo "active" no schema, portanto usa exclusão física
 
 import * as React from "react";
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { Pencil, Plus, Trash2, MoreVertical, Undo2, Search } from "lucide-react";
+import Link from "next/link";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 import {
   Dialog,
   DialogContent,
@@ -113,16 +121,27 @@ export function DisciplinasDataTable() {
         body: JSON.stringify({ name: form.name.trim() }),
       });
 
-      const json = await res.json();
-
+      // Se não estiver OK, tente extrair a mensagem de erro do body.
       if (!res.ok) {
-        toast.error(json.error ?? "Erro ao salvar a disciplina.");
+        try {
+          const errJson = await res.json();
+          toast.error(errJson?.error ?? "Erro ao salvar a disciplina.");
+        } catch (e) {
+          toast.error("Erro ao salvar a disciplina.");
+        }
         return;
       }
 
+      // Sucesso: mostra toast imediatamente
       toast.success(editando ? "Disciplina atualizada!" : "Disciplina criada!");
       fecharDialog();
-      buscarDisciplinas();
+      // Atualiza a lista, mas capture erros para não sobrescrever o toast de sucesso
+      try {
+        await buscarDisciplinas();
+      } catch (e) {
+        console.error("Erro ao atualizar lista de disciplinas após criação:", e);
+        toast.error("Disciplina criada, mas houve erro ao atualizar a lista.");
+      }
     } catch {
       toast.error("Erro de conexão. Tente novamente.");
     } finally {
@@ -160,16 +179,40 @@ export function DisciplinasDataTable() {
     <div className="space-y-4">
       {/* Barra de ações */}
       <div className="flex items-center justify-between gap-4">
-        <Input
-          placeholder="Buscar por nome..."
-          value={busca}
-          onChange={(e) => setBusca(e.target.value)}
-          className="max-w-sm"
-        />
-        <Button onClick={abrirCriacao} size="sm">
-          <Plus className="mr-2 size-4" />
-          Nova Disciplina
-        </Button>
+        <div className="relative flex-1 min-w-0">
+          <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-muted-foreground pointer-events-none">
+            <Search className="size-4" />
+          </span>
+          <Input
+            placeholder="Buscar por nome..."
+            value={busca}
+            onChange={(e) => setBusca(e.target.value)}
+            className="pl-10 w-full"
+          />
+        </div>
+
+        <div className="flex items-center gap-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="default" size="icon" className="flex items-center justify-center" aria-label="Abrir opções">
+                <MoreVertical />
+                <span className="sr-only">Abrir opções</span>
+              </Button>
+            </DropdownMenuTrigger>
+
+            <DropdownMenuContent align="end" className="w-36">
+              <DropdownMenuItem onClick={abrirCriacao}>
+                <Plus className="size-4" /> Nova Disciplina
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <Link href="/config/listas">
+            <Button variant="default" size="icon" aria-label="Voltar para Listas Suspensas">
+              <Undo2 className="size-4" />
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {/* Tabela de disciplinas */}
@@ -196,28 +239,34 @@ export function DisciplinasDataTable() {
               </TableRow>
             ) : (
               disciplinasFiltradas.map((d) => (
-                <TableRow key={d.id}>
+                <TableRow key={d.id} className="h-14 align-middle">
                   <TableCell>{d.name}</TableCell>
-                  <TableCell className="text-right space-x-1">
-                    {/* Botão editar */}
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => abrirEdicao(d)}
-                      title="Editar disciplina"
-                    >
-                      <Pencil className="size-4" />
-                    </Button>
-                    {/* Botão excluir */}
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setExcluindoId(d.id)}
-                      title="Excluir disciplina"
-                      className="text-destructive hover:text-destructive"
-                    >
-                      <Trash2 className="size-4" />
-                    </Button>
+                  <TableCell className="text-right flex items-center justify-end">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="data-[state=open]:bg-muted text-muted-foreground flex items-center justify-center size-8 mr-2"
+                        >
+                          <MoreVertical />
+                          <span className="sr-only">Abrir menu</span>
+                        </Button>
+                      </DropdownMenuTrigger>
+
+                      <DropdownMenuContent align="end" className="w-36">
+                        <DropdownMenuItem onClick={() => abrirEdicao(d)}>
+                          <Pencil className="size-4" /> Editar
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          onClick={() => setExcluindoId(d.id)}
+                          className="text-destructive"
+                        >
+                          <Trash2 className="size-4" /> Excluir
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </TableCell>
                 </TableRow>
               ))
