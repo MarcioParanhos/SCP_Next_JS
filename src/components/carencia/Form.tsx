@@ -2,8 +2,9 @@
 
 import React from "react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardAction } from "@/components/ui/card";
-import { CircleUserRound, X, Tag, Check, School } from "lucide-react";
+import { CircleUserRound, X, Tag, Check, School, AlarmClockCheck, UserCheck } from "lucide-react";
 import { Label } from "@/components/ui/label";
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import SchoolUnitSearch from "@/components/school-unit/SchoolUnitSearch";
 import SchoolUnitCard from "@/components/school-unit/SchoolUnitCard";
 import ServerSearch from "@/components/server/ServerSearch";
@@ -174,6 +175,8 @@ export function RealCarenciaForm() {
   // Tipo da carência: REAL ou TEMPORARY. Permite ao usuário escolher qual tipo
   // será persistido no banco. Default é 'REAL'. Comentários em português para manutenção.
   const [carenciaType, setCarenciaType] = React.useState<'REAL' | 'TEMPORARY'>('REAL');
+  const [confirmOpen, setConfirmOpen] = React.useState(false);
+  const [pendingType, setPendingType] = React.useState<'REAL' | 'TEMPORARY' | null>(null);
   // Chave para forçar remount do formulário quando necessário (limpar estados internos de componentes)
   const [formKey, setFormKey] = React.useState<number>(0);
   // Evita envios concorrentes do formulário
@@ -577,6 +580,26 @@ export function RealCarenciaForm() {
           </CardContent>
         </Card>
 
+          <ConfirmDialog
+            open={confirmOpen}
+            onOpenChange={(open) => {
+              setConfirmOpen(open);
+              if (!open) setPendingType(null);
+            }}
+            title={pendingType === 'REAL' ? 'Confirmar: Carência Real' : 'Confirmar: Carência Temporária'}
+            description={pendingType === 'REAL' ? 'Deseja definir esta carência como Real? Confirme para alterar o tipo.' : 'Deseja definir esta carência como Temporária? Confirme para alterar o tipo.'}
+            confirmLabel="Confirmar"
+            cancelLabel="Cancelar"
+            confirmVariant="default"
+            onConfirm={() => {
+              if (pendingType) {
+                setCarenciaType(pendingType as 'REAL' | 'TEMPORARY');
+                try { toast.success(`Tipo alterado para ${pendingType === 'REAL' ? 'Real' : 'Temporária'}`); } catch (e) {}
+              }
+              setPendingType(null);
+            }}
+          />
+
           {/* Abas de Tipo de Carência: mesmo formulário será usado para todos os tipos */}
           <div className="mb-4">
             <div className="flex items-center justify-between">
@@ -603,27 +626,43 @@ export function RealCarenciaForm() {
           {/* Card: Dados da Carência */}
         <Card>
           <CardHeader>
-            <div>
-              <CardTitle>Dados da Carência</CardTitle>
-              {/* Card que reúne os dados formais da carência: disciplina, área pedagógica, motivo e data de início. */}
-              <CardDescription className="mt-1">Coloque os dados da carência.</CardDescription>
-            </div>
-            <CardAction>
-              {/* Seletor para escolher se a carência é REAL ou TEMPORARY.
-                  Comentários em português adicionados para facilitar manutenção. */}
-              <div className="flex items-center gap-2">
-                <Label className="text-xs">Tipo</Label>
-                <Select value={carenciaType} onValueChange={(v) => setCarenciaType(v as 'REAL'|'TEMPORARY')}>
-                  <SelectTrigger className="w-40">
-                    <SelectValue placeholder="Selecione" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="REAL">Real</SelectItem>
-                    <SelectItem value="TEMPORARY">Temporária</SelectItem>
-                  </SelectContent>
-                </Select>
+            <div className="w-full flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div>
+                  <CardTitle>Dados da Carência</CardTitle>
+                  {/* Card que reúne os dados formais da carência: disciplina, área pedagógica, motivo e data de início. */}
+                  <CardDescription className="mt-1">Coloque os dados da carência.</CardDescription>
+                </div>
+
+                {/* badge maior e ao lado do título para deixar o tipo mais nítido ao usuário */}
+                <div className={`ml-2 inline-flex items-center rounded-full px-4 py-2 text-base font-semibold uppercase ${carenciaType === 'REAL' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
+                  {carenciaType === 'REAL' ? <UserCheck className="h-5 w-5 mr-3" /> : <AlarmClockCheck className="h-5 w-5 mr-3" />}
+                  {carenciaType === 'REAL' ? 'REAL' : 'TEMPORÁRIA'}
+                </div>
               </div>
-            </CardAction>
+
+              <CardAction>
+                {/* Seletor para escolher se a carência é REAL ou TEMPORARY. */}
+                <div className="flex items-center gap-2">
+                  <Label className="text-xs">Tipo</Label>
+                  <Select value={carenciaType} onValueChange={(v) => {
+                    // abre diálogo de confirmação antes de aplicar a mudança
+                    const next = v as 'REAL' | 'TEMPORARY';
+                    if (next === carenciaType) return;
+                    setPendingType(next);
+                    setConfirmOpen(true);
+                  }}>
+                    <SelectTrigger className="w-40">
+                      <SelectValue placeholder="Selecione" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="REAL">Real</SelectItem>
+                      <SelectItem value="TEMPORARY">Temporária</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </CardAction>
+            </div>
           </CardHeader>
           <CardContent>
             {/* Grid responsivo: em telas maiores mostramos 4 colunas */}
