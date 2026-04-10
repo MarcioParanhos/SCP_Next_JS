@@ -20,6 +20,7 @@ const LABELS: Record<string, string> = {
   dashboard: "Dashboard",
   school_units: "Unidades Escolares",
   carencia: "Carência",
+  incluir: "Incluir Carência",
   temporaria: "Temporária",
   real: "Real",
   config: "Configurações",

@@ -14,6 +14,7 @@ import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import toast, { Toaster as HotToaster } from "react-hot-toast";
+import Link from 'next/link';
 
 export function RealCarenciaForm() {
   // Estado que contém a lista de unidades escolares carregadas da API.
@@ -181,6 +182,7 @@ export function RealCarenciaForm() {
   const [formKey, setFormKey] = React.useState<number>(0);
   // Evita envios concorrentes do formulário
   const [isSaving, setIsSaving] = React.useState<boolean>(false);
+  const [savedCarencia, setSavedCarencia] = React.useState<any | null>(null);
 
   // Tipo de carência selecionado (controla abas). Usamos a mesma base de form
   // para todos os tipos — abas apenas alteram o 'tipo' que será enviado.
@@ -466,6 +468,11 @@ export function RealCarenciaForm() {
         error: (err: any) => `Erro ao salvar: ${err?.message ?? 'Erro desconhecido'}`,
       })
 
+      // Se a API retornou o objeto criado, guardamos para exibir link de acesso rápido
+      if (json && json.data) {
+        setSavedCarencia(json.data);
+      }
+
       // Sucesso: limpa estados relevantes após salvar (não limpa unidade selecionada)
       setSelectedServer(null)
       setSelectedServerData(null)
@@ -475,6 +482,10 @@ export function RealCarenciaForm() {
       setNightCount(0)
       setSelectedDiscipline("")
       setSelectedDisciplineId(null)
+      // Limpa seleção de curso e eixo conforme solicitado
+      setSelectedCurso("")
+      setSelectedCursoId(null)
+      setSelectedEixo("")
       setSelectedArea(undefined)
       setSelectedMotive(undefined)
       setSelectedMotiveId(null)
@@ -517,6 +528,21 @@ export function RealCarenciaForm() {
         <span className="font-medium">Observação:</span> Campos marcados com <span className="text-rose-500">*</span> são obrigatórios e devem ser preenchidos antes de preparar a carência.
       </div>
 
+      {/* Banner de sucesso com link para ver a carência criada */}
+      {savedCarencia && (
+        <div className="mt-4">
+          <div className="rounded-md p-3 bg-emerald-50 border border-emerald-100 text-emerald-800 flex items-center justify-between">
+            <div>
+              <div className="font-semibold">Carência salva</div>
+              <div className="text-sm">A carência foi criada com sucesso.</div>
+            </div>
+            <div>
+              <Link href={`/carencia/${savedCarencia.id}`} className="inline-flex items-center rounded-md bg-emerald-600 text-white px-3 py-1 text-sm">Ver carência</Link>
+            </div>
+          </div>
+        </div>
+      )}
+
       {isSelectedUnitHomologated && (
         <div className="mt-4">
           {/* Aviso visual discreto sobre homologação. Não é um modal — apenas informação contextual. */}
@@ -527,7 +553,8 @@ export function RealCarenciaForm() {
         </div>
       )}
 
-      <form key={formKey} onSubmit={handleSubmit} className="mt-6 space-y-6">
+      <div className="relative mt-6">
+        <form key={formKey} onSubmit={handleSubmit} className="space-y-6">
         <Card>
           <CardHeader>
             <div>
@@ -900,7 +927,14 @@ export function RealCarenciaForm() {
             {isSaving ? 'Salvando...' : 'Preparar Carência'}
           </Button>
         </div>
-      </form>
+        </form>
+
+        {isSaving && (
+          <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/60">
+            <div className="w-12 h-12 border-4 border-gray-200 border-t-primary rounded-full animate-spin" />
+          </div>
+        )}
+      </div>
     </main>
   );
 }
