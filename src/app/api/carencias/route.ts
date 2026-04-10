@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/app/api/auth/[...nextauth]/route'
 
 // Rota POST /api/carencias
 // Recebe o payload da carência e persiste em duas tabelas: `carencias` e `carencia_rows`.
@@ -49,6 +51,12 @@ export async function POST(req: Request) {
     if (body.area?.id) carenciaData.area_id = Number(body.area.id)
     if (body.motive?.id) carenciaData.motive_id = Number(body.motive.id)
     if (body.course?.id) carenciaData.course_id = body.course.id ? Number(body.course.id) : null
+
+    // Registra o usuário que criou a carência (quando autenticado)
+    const session = await getServerSession(authOptions as any)
+    if ((session?.user as any)?.id) {
+      carenciaData.created_by_id = String((session.user as any).id)
+    }
 
     // Linhas detalhadas — converte para o formato aceito pelo Prisma.
     // Se o cliente não enviou linhas, mas enviou quantitativos por turno,

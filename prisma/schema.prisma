@@ -18,6 +18,8 @@ model User {
   sessions      Session[]
   // Relação inversa: homologações realizadas por este usuário
   homologations Homologation[]
+  // Relação inversa: carências criadas por este usuário
+  carencias     Carencia[]
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
 }
@@ -227,8 +229,14 @@ model Carencia {
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
 
+  // Usuário que criou a carência (opcional) — relation para `User`
+  created_by_id  String?
+  createdBy      User?         @relation(fields: [created_by_id], references: [id], onDelete: SetNull)
+
   // Linhas detalhadas (disciplinas/quantitativos) relacionadas
   rows CarenciaRow[]
+
+  @@index([created_by_id])
 
   @@map("carencias")
 }
