@@ -12,7 +12,7 @@ import Combobox from "@/components/ui/combobox";
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import toast from "react-hot-toast";
+import toast, { Toaster as HotToaster } from "react-hot-toast";
 
 export function RealCarenciaForm() {
   // Estado que contém a lista de unidades escolares carregadas da API.
@@ -176,6 +176,8 @@ export function RealCarenciaForm() {
   const [carenciaType, setCarenciaType] = React.useState<'REAL' | 'TEMPORARY'>('REAL');
   // Chave para forçar remount do formulário quando necessário (limpar estados internos de componentes)
   const [formKey, setFormKey] = React.useState<number>(0);
+  // Evita envios concorrentes do formulário
+  const [isSaving, setIsSaving] = React.useState<boolean>(false);
 
   // Tipo de carência selecionado (controla abas). Usamos a mesma base de form
   // para todos os tipos — abas apenas alteram o 'tipo' que será enviado.
@@ -381,6 +383,22 @@ export function RealCarenciaForm() {
   // - Endpoint API para salvar a carência e tratamento de erros/retorno
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    // Validação mínima no cliente: evita enviar sem campos obrigatórios
+    const missing: string[] = [];
+    if (!selectedUnit) missing.push('Unidade escolar');
+    // Disciplina: aceita disciplina selecionada ou linhas preenchidas
+    const hasDiscipline = Boolean(selectedDisciplineId) || (rows && rows.length > 0 && rows.some(r => r.discipline));
+    if (!hasDiscipline) missing.push('Disciplina');
+    if (!selectedArea) missing.push('Área');
+    if (!selectedMotiveId) missing.push('Motivo da Carência');
+    if (!selectedDate) missing.push('Início da Vaga');
+    if (tipo === 'profissionalizante') {
+      if (!selectedCursoId) missing.push('Curso');
+    }
+    if (missing.length > 0) {
+      toast.error(`Preencha os campos obrigatórios: ${missing.join(', ')}`);
+      return;
+    }
     // Monta o payload incluindo ids quando disponíveis (disciplina e curso)
     const areaObj = areasList.find((a) => String(a.id) === String(selectedArea));
     const payload: any = {
@@ -424,25 +442,28 @@ export function RealCarenciaForm() {
     // Envia o payload para a API que persiste a carência no banco.
     // Comentários em português para facilitar manutenção futura.
     try {
-      const res = await fetch('/api/carencias', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+      setIsSaving(true)
+      const savePromise = (async () => {
+        const res = await fetch('/api/carencias', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        })
+        if (!res.ok) {
+          const json = await res.json().catch(() => ({}))
+          const msg = json?.error || `Erro ao salvar (status ${res.status})`
+          throw new Error(msg)
+        }
+        return await res.json()
+      })()
+
+      const json = await toast.promise(savePromise, {
+        loading: 'Salvando carência...',
+        success: 'Carência salva com sucesso',
+        error: (err: any) => `Erro ao salvar: ${err?.message ?? 'Erro desconhecido'}`,
       })
 
-      if (!res.ok) {
-        const json = await res.json().catch(() => ({}))
-        const msg = json?.error || `Erro ao salvar (status ${res.status})`
-        toast.error(msg)
-        return
-      }
-
-      const json = await res.json()
-      // Sucesso: mostrar confirmação e limpar o formulário básico
-      toast.success('Carência salva com sucesso')
-      // Limpa estados relevantes após salvar (ajuste conforme necessidade)
-      // NOTA: não limpamos `selectedUnit`/`selectedUnitData` para manter a
-      // unidade escolar selecionada entre salvamentos conforme solicitado.
+      // Sucesso: limpa estados relevantes após salvar (não limpa unidade selecionada)
       setSelectedServer(null)
       setSelectedServerData(null)
       setRows([])
@@ -455,11 +476,11 @@ export function RealCarenciaForm() {
       setSelectedMotive(undefined)
       setSelectedMotiveId(null)
       setSelectedDate("")
-      // Incrementa formKey para forçar remount dos componentes controlados
       setFormKey((k) => k + 1)
     } catch (err) {
       console.error('Erro no submit:', err)
-      toast.error('Erro ao salvar carência')
+    } finally {
+      setIsSaving(false)
     }
   }
 
@@ -475,6 +496,8 @@ export function RealCarenciaForm() {
 
   return (
     <main className="p-8">
+      {/* Toaster global para exibir toasts gerados por react-hot-toast */}
+      <HotToaster position="top-center" />
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Carência {carenciaType === 'REAL' ? 'Real' : 'Temporária'}</h1>
         <div aria-hidden className="ml-4 flex-shrink-0">
@@ -830,12 +853,12 @@ export function RealCarenciaForm() {
         <div className="flex justify-end">
           <Button
             type="submit"
-            disabled={isSelectedUnitHomologated}
+            disabled={isSelectedUnitHomologated || isSaving}
             title={isSelectedUnitHomologated ? "Remova a homologação antes de preparar a carência" : undefined}
             className="px-6 py-2 text-sm inline-flex items-center gap-2"
           >
             <Check className="h-4 w-4" />
-            Preparar Carência
+            {isSaving ? 'Salvando...' : 'Preparar Carência'}
           </Button>
         </div>
       </form>
