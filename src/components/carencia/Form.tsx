@@ -2,7 +2,7 @@
 
 import React from "react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardAction } from "@/components/ui/card";
-import { CircleUserRound, X, Tag, Check, School, AlarmClockCheck, UserCheck } from "lucide-react";
+import { CircleUserRound, X, Tag, Check, School } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import SchoolUnitSearch from "@/components/school-unit/SchoolUnitSearch";
@@ -15,6 +15,9 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import toast, { Toaster as HotToaster } from "react-hot-toast";
 import Link from 'next/link';
+import CarenciaHeader from './CarenciaHeader';
+import TurnInputs from './TurnInputs';
+import RowsTable from './RowsTable';
 
 export function RealCarenciaForm() {
   // Estado que contém a lista de unidades escolares carregadas da API.
@@ -50,6 +53,22 @@ export function RealCarenciaForm() {
   const [motivesList, setMotivesList] = React.useState<Array<{ id: number; code: string; description: string; type: string }>>([]);
   const [loadingMotives, setLoadingMotives] = React.useState<boolean>(true);
 
+  // Campos do formulário: seleção de disciplina, área, motivo e data
+  const [selectedDiscipline, setSelectedDiscipline] = React.useState<string>("");
+  const [selectedDisciplineId, setSelectedDisciplineId] = React.useState<number | null>(null);
+  const [selectedArea, setSelectedArea] = React.useState<string | undefined>(undefined);
+  const [selectedMotive, setSelectedMotive] = React.useState<string | undefined>(undefined);
+  const [selectedMotiveId, setSelectedMotiveId] = React.useState<number | null>(null);
+  const [selectedDate, setSelectedDate] = React.useState<string>("");
+
+  // Cursos / Eixos (usados na aba profissionalizante)
+  const [eixosList, setEixosList] = React.useState<Array<{ id: number; name: string }>>([]);
+  const [coursesList, setCoursesList] = React.useState<Array<{ id: number; name: string; eixo_id: number }>>([]);
+  const [loadingCourses, setLoadingCourses] = React.useState<boolean>(false);
+  const [selectedCurso, setSelectedCurso] = React.useState<string>("");
+  const [selectedCursoId, setSelectedCursoId] = React.useState<number | null>(null);
+  const [selectedEixo, setSelectedEixo] = React.useState<string>("");
+
   // Fetch disciplines from API on mount
   React.useEffect(() => {
     let mounted = true;
@@ -59,8 +78,6 @@ export function RealCarenciaForm() {
         if (!res.ok) return;
         const json = await res.json();
         if (!mounted) return;
-        // Mantemos a lista completa de objetos retornados pelo servidor
-        // para podermos obter os ids quando o usuário selecionar uma disciplina.
         setDisciplines(json.data || []);
       } catch (err) {
         console.error('Erro ao carregar disciplinas:', err);
@@ -68,25 +85,6 @@ export function RealCarenciaForm() {
     })();
     return () => { mounted = false; };
   }, []);
-
-  // Estados controlados para os campos do card "Dados da Carência".
-  // Armazenamos o nome e o id da disciplina selecionada.
-  const [selectedDiscipline, setSelectedDiscipline] = React.useState<string>("");
-  const [selectedDisciplineId, setSelectedDisciplineId] = React.useState<number | null>(null);
-  const [selectedArea, setSelectedArea] = React.useState<string | undefined>(undefined);
-  const [selectedMotive, setSelectedMotive] = React.useState<string | undefined>(undefined);
-  // Guarda também o id do motivo selecionado para persistência no banco
-  const [selectedMotiveId, setSelectedMotiveId] = React.useState<number | null>(null);
-  const [selectedDate, setSelectedDate] = React.useState<string>("");
-  const [selectedCurso, setSelectedCurso] = React.useState<string>("");
-  // Armazenamos também o id do curso selecionado (útil para envio ao backend).
-  const [selectedCursoId, setSelectedCursoId] = React.useState<number | null>(null);
-  const [selectedEixo, setSelectedEixo] = React.useState<string>("");
-
-  // Eixos e cursos carregados da API (tabelas eixos/courses)
-  const [eixosList, setEixosList] = React.useState<Array<{ id: number; name: string }>>([]);
-  const [coursesList, setCoursesList] = React.useState<Array<{ id: number; name: string; eixo_id: number }>>([]);
-  const [loadingCourses, setLoadingCourses] = React.useState<boolean>(false);
 
   // Carrega eixos uma vez ao montar
   React.useEffect(() => {
@@ -370,14 +368,14 @@ export function RealCarenciaForm() {
     setRows((r) => [...r, { id: Date.now(), discipline: disciplines[0], area: "", reason: "", startDate: "", morning: 0, afternoon: 0, night: 0 }]);
   }
 
-  // Remove uma linha pelo `id` gerado.
-  function removeRow(id: number) {
+  // Remove uma linha pelo `id` gerado (aceita string ou number para compatibilidade).
+  function removeRow(id: string | number) {
     setRows((r) => r.filter((x) => x.id !== id));
   }
 
   // Atualiza parcialmente uma linha: recebe o `id` e um `patch` com os campos a alterar.
-  // Útil para inputs controlados dentro de uma linha (p.ex. alterar quantidades por turno).
-  function updateRow(id: number, patch: any) {
+  // Aceita `id` string|number para compatibilidade com RowsTable.
+  function updateRow(id: string | number, patch: any) {
     setRows((r) => r.map((x) => (x.id === id ? { ...x, ...patch } : x)));
   }
 
@@ -653,43 +651,7 @@ export function RealCarenciaForm() {
           {/* Card: Dados da Carência */}
         <Card>
           <CardHeader>
-            <div className="w-full flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div>
-                  <CardTitle>Dados da Carência</CardTitle>
-                  {/* Card que reúne os dados formais da carência: disciplina, área pedagógica, motivo e data de início. */}
-                  <CardDescription className="mt-1">Coloque os dados da carência.</CardDescription>
-                </div>
-
-                {/* badge maior e ao lado do título para deixar o tipo mais nítido ao usuário */}
-                <div className={`ml-2 inline-flex items-center rounded-sm px-4 py-2 text-base font-semibold uppercase ${carenciaType === 'REAL' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
-                  {carenciaType === 'REAL' ? <UserCheck className="h-5 w-5 mr-3" /> : <AlarmClockCheck className="h-5 w-5 mr-3" />}
-                  {carenciaType === 'REAL' ? 'REAL' : 'TEMPORÁRIA'}
-                </div>
-              </div>
-
-              <CardAction>
-                {/* Seletor para escolher se a carência é REAL ou TEMPORARY. */}
-                <div className="flex items-center gap-2">
-                  <Label className="text-xs">Tipo</Label>
-                  <Select value={carenciaType} onValueChange={(v) => {
-                    // abre diálogo de confirmação antes de aplicar a mudança
-                    const next = v as 'REAL' | 'TEMPORARY';
-                    if (next === carenciaType) return;
-                    setPendingType(next);
-                    setConfirmOpen(true);
-                  }}>
-                    <SelectTrigger className="w-40">
-                      <SelectValue placeholder="Selecione" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="REAL">Real</SelectItem>
-                      <SelectItem value="TEMPORARY">Temporária</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </CardAction>
-            </div>
+            <CarenciaHeader carenciaType={carenciaType} onRequestTypeChange={(next) => { setPendingType(next); setConfirmOpen(true); }} />
           </CardHeader>
           <CardContent>
             {/* Grid responsivo: em telas maiores mostramos 4 colunas */}
@@ -802,64 +764,16 @@ export function RealCarenciaForm() {
               </div>
             )}
 
-            {/* Quantitativos por turno: inputs numéricos e total dinâmico */}
-            <div className="mt-4">
-              <div className="flex items-end gap-4">
-                <div className="flex flex-col items-center">
-                  <div className="text-xs text-muted-foreground mb-1">MAT</div>
-                  <Input
-                    type="number"
-                    min={0}
-                    step={1}
-                    inputMode="numeric"
-                    value={String(morningCount)}
-                    onChange={(e) => setMorningCount(Math.max(0, parseInt(e.target.value || '0') || 0))}
-                    onBlur={(e) => { const v = Math.max(0, parseInt(e.target.value || '0') || 0); if (v !== morningCount) setMorningCount(v); }}
-                    className="w-25 text-center py-1"
-                  />
-                </div>
-
-                <div className="flex flex-col items-center">
-                  <div className="text-xs text-muted-foreground mb-1">VESP</div>
-                  <Input
-                    type="number"
-                    min={0}
-                    step={1}
-                    inputMode="numeric"
-                    value={String(afternoonCount)}
-                    onChange={(e) => setAfternoonCount(Math.max(0, parseInt(e.target.value || '0') || 0))}
-                    onBlur={(e) => { const v = Math.max(0, parseInt(e.target.value || '0') || 0); if (v !== afternoonCount) setAfternoonCount(v); }}
-                    className="w-25 text-center py-1"
-                  />
-                </div>
-
-                <div className="flex flex-col items-center">
-                  <div className="text-xs text-muted-foreground mb-1">NOT</div>
-                  <Input
-                    type="number"
-                    min={0}
-                    step={1}
-                    inputMode="numeric"
-                    value={String(nightCount)}
-                    onChange={(e) => setNightCount(Math.max(0, parseInt(e.target.value || '0') || 0))}
-                    onBlur={(e) => { const v = Math.max(0, parseInt(e.target.value || '0') || 0); if (v !== nightCount) setNightCount(v); }}
-                    className="w-25 text-center py-1"
-                  />
-                </div>
-
-                <div className="flex flex-col items-center">
-                  <div className="text-xs text-muted-foreground mb-1">TOTAL</div>
-                   <Input
-                     type="number"
-                     readOnly
-                     min={0}
-                     value={totalCount}
-                     aria-label="Total solicitado"
-                     className="w-25 text-center py-1"
-                   />
-                </div>
-              </div>
-            </div>
+            <TurnInputs
+              morningCount={morningCount}
+              afternoonCount={afternoonCount}
+              nightCount={nightCount}
+              setMorningCount={setMorningCount}
+              setAfternoonCount={setAfternoonCount}
+              setNightCount={setNightCount}
+              totalCount={totalCount}
+            />
+            <RowsTable rows={rows} addRow={addRow} removeRow={removeRow} updateRow={updateRow} />
           </CardContent>
         </Card>
 
