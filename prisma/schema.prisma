@@ -87,13 +87,17 @@ model SchoolUnit {
   municipality    Municipality   @relation(fields: [municipality_id], references: [id])
   // Relação inversa para registrar as homologações vinculadas a esta unidade
   homologations   Homologation[]
+  // Relação inversa: carências registradas nesta unidade
+  carencias       Carencia[]
 
   @@map("school_units")
 }
 
 model Discipline {
-  id   Int    @id @default(autoincrement())
-  name String
+  id        Int        @id @default(autoincrement())
+  name      String
+  // Relação inversa: carências que usam esta disciplina
+  carencias Carencia[]
 
   @@map("disciplines")
 }
@@ -107,10 +111,12 @@ model Eixo {
 }
 
 model Course {
-  id     Int   @id @default(autoincrement())
-  name   String
-  eixo_id Int
-  eixo   Eixo  @relation(fields: [eixo_id], references: [id])
+  id        Int        @id @default(autoincrement())
+  name      String
+  eixo_id   Int
+  eixo      Eixo       @relation(fields: [eixo_id], references: [id])
+  // Relação inversa: carências vinculadas a este curso
+  carencias Carencia[]
 
   @@map("courses")
 }
@@ -133,8 +139,10 @@ model Employee {
   enrollment    String   @default("PENDING") // Número de matrícula funcional (PENDING até atribuído)
   bond_type     String // Tipo de vínculo (ex.: REDA, EFETIVO, DESIGNADO)
   work_schedule String // Jornada de trabalho (ex.: 20H, 40H, DE)
-  createdAt     DateTime @default(now()) // Timestamp de criação do registro
-  updatedAt     DateTime @updatedAt // Timestamp da última atualização (gerenciado pelo Prisma)
+  createdAt     DateTime   @default(now()) // Timestamp de criação do registro
+  updatedAt     DateTime   @updatedAt // Timestamp da última atualização (gerenciado pelo Prisma)
+  // Relação inversa: carências geradas por este servidor
+  carencias     Carencia[]
 
   @@map("employees") // Nome da tabela no banco
 }
@@ -173,17 +181,70 @@ model Motive {
   type        CarenciaType
   active      Boolean      @default(true)
   createdAt   DateTime     @default(now())
+  // Relação inversa: carências que usam este motivo
+  carencias   Carencia[]
 
   @@map("carencia_motives")
 }
 
 // Tabela para áreas pedagógicas usadas nas carências
 model Area {
-  id        Int      @id @default(autoincrement())
-  code      String   @unique
+  id        Int        @id @default(autoincrement())
+  code      String     @unique
   name      String
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now())
+  active    Boolean    @default(true)
+  createdAt DateTime   @default(now())
+  // Relação inversa: carências vinculadas a esta área pedagógica
+  carencias Carencia[]
 
   @@map("carencia_areas")
+}
+
+// Modelo para armazenar a carência (real ou temporária).
+model Carencia {
+  id             Int           @id @default(autoincrement())
+  type           CarenciaType  // REAL ou TEMPORARY
+  school_unit_id Int
+  schoolUnit     SchoolUnit    @relation(fields: [school_unit_id], references: [id])
+  // servidor que gerou a carência (employee)
+  server_id      Int?
+  server         Employee?     @relation(fields: [server_id], references: [id])
+  discipline_id  Int?          // disciplina principal, opcional
+  discipline     Discipline?   @relation(fields: [discipline_id], references: [id])
+  area_id        Int?
+  area           Area?         @relation(fields: [area_id], references: [id])
+  motive_id      Int?
+  motive         Motive?       @relation(fields: [motive_id], references: [id])
+  startDate      DateTime?
+  course_id      Int?
+  course         Course?       @relation(fields: [course_id], references: [id])
+  // Quantitativos por turno armazenados também na tabela principal para
+  // consultas rápidas sem necessidade de join nas linhas.
+  morning        Int           @default(0)
+  afternoon      Int           @default(0)
+  night          Int           @default(0)
+  total          Int           @default(0)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  // Linhas detalhadas (disciplinas/quantitativos) relacionadas
+  rows CarenciaRow[]
+
+  @@map("carencias")
+}
+
+// Linhas que detalham disciplinas / quantidades por turno para uma carência
+model CarenciaRow {
+  id           Int       @id @default(autoincrement())
+  carencia_id  Int
+  carencia     Carencia  @relation(fields: [carencia_id], references: [id])
+  discipline   String?
+  area         String?
+  reason       String?
+  morning      Int       @default(0)
+  afternoon    Int       @default(0)
+  night        Int       @default(0)
+  createdAt    DateTime  @default(now())
+
+  @@map("carencia_rows")
 }

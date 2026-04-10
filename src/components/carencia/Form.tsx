@@ -71,8 +71,8 @@ export function RealCarenciaForm() {
   // Armazenamos o nome e o id da disciplina selecionada.
   const [selectedDiscipline, setSelectedDiscipline] = React.useState<string>("");
   const [selectedDisciplineId, setSelectedDisciplineId] = React.useState<number | null>(null);
-  const [selectedArea, setSelectedArea] = React.useState<string>("");
-  const [selectedMotive, setSelectedMotive] = React.useState<string>("");
+  const [selectedArea, setSelectedArea] = React.useState<string | undefined>(undefined);
+  const [selectedMotive, setSelectedMotive] = React.useState<string | undefined>(undefined);
   // Guarda também o id do motivo selecionado para persistência no banco
   const [selectedMotiveId, setSelectedMotiveId] = React.useState<number | null>(null);
   const [selectedDate, setSelectedDate] = React.useState<string>("");
@@ -170,6 +170,12 @@ export function RealCarenciaForm() {
   const [afternoonCount, setAfternoonCount] = React.useState<number>(0);
   const [nightCount, setNightCount] = React.useState<number>(0);
   const totalCount = React.useMemo(() => morningCount + afternoonCount + nightCount, [morningCount, afternoonCount, nightCount]);
+
+  // Tipo da carência: REAL ou TEMPORARY. Permite ao usuário escolher qual tipo
+  // será persistido no banco. Default é 'REAL'. Comentários em português para manutenção.
+  const [carenciaType, setCarenciaType] = React.useState<'REAL' | 'TEMPORARY'>('REAL');
+  // Chave para forçar remount do formulário quando necessário (limpar estados internos de componentes)
+  const [formKey, setFormKey] = React.useState<number>(0);
 
   // Tipo de carência selecionado (controla abas). Usamos a mesma base de form
   // para todos os tipos — abas apenas alteram o 'tipo' que será enviado.
@@ -378,6 +384,9 @@ export function RealCarenciaForm() {
     // Monta o payload incluindo ids quando disponíveis (disciplina e curso)
     const areaObj = areasList.find((a) => String(a.id) === String(selectedArea));
     const payload: any = {
+    // Dados principais da carência
+    // Usa o tipo selecionado pelo usuário no seletor (REAL | TEMPORARY)
+    type: carenciaType,
       unitId: selectedUnit,
       serverId: selectedServer,
       discipline: { id: selectedDisciplineId, name: selectedDiscipline },
@@ -392,15 +401,66 @@ export function RealCarenciaForm() {
         description: motivesList.find((m) => m.code === selectedMotive)?.description ?? null,
       },
       startDate: selectedDate,
-      rows,
+      // Quantitativos por turno (valores exibidos no topo do formulário)
+      morningCount,
+      afternoonCount,
+      nightCount,
+      totalCount,
+      // Linhas detalhadas (por disciplina). Se o usuário não adicionou linhas,
+      // enviaremos uma linha agregada com os quantitativos informados no topo.
+      rows: rows && rows.length > 0 ? rows : (totalCount > 0 ? [{
+        discipline: selectedDiscipline || null,
+        area: selectedArea || null,
+        reason: '',
+        morning: morningCount,
+        afternoon: afternoonCount,
+        night: nightCount,
+      }] : []),
     };
     // Se for profissionalizante, inclua também o curso selecionado com id
     if (tipo === 'profissionalizante') {
       payload.course = { id: selectedCursoId, name: selectedCurso };
     }
-    // Em desenvolvimento apenas imprimimos no console. Substituir por `fetch('/api/carencias', { method: 'POST', body: JSON.stringify(payload) })` quando o endpoint existir.
-    console.log("carencia payload:", payload);
-    toast.success("Dados preparados (não salvos): ver console");
+    // Envia o payload para a API que persiste a carência no banco.
+    // Comentários em português para facilitar manutenção futura.
+    try {
+      const res = await fetch('/api/carencias', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}))
+        const msg = json?.error || `Erro ao salvar (status ${res.status})`
+        toast.error(msg)
+        return
+      }
+
+      const json = await res.json()
+      // Sucesso: mostrar confirmação e limpar o formulário básico
+      toast.success('Carência salva com sucesso')
+      // Limpa estados relevantes após salvar (ajuste conforme necessidade)
+      // NOTA: não limpamos `selectedUnit`/`selectedUnitData` para manter a
+      // unidade escolar selecionada entre salvamentos conforme solicitado.
+      setSelectedServer(null)
+      setSelectedServerData(null)
+      setRows([])
+      setMorningCount(0)
+      setAfternoonCount(0)
+      setNightCount(0)
+      setSelectedDiscipline("")
+      setSelectedDisciplineId(null)
+      setSelectedArea(undefined)
+      setSelectedMotive(undefined)
+      setSelectedMotiveId(null)
+      setSelectedDate("")
+      // Incrementa formKey para forçar remount dos componentes controlados
+      setFormKey((k) => k + 1)
+    } catch (err) {
+      console.error('Erro no submit:', err)
+      toast.error('Erro ao salvar carência')
+    }
   }
 
   // selectedUnitData é guardado no estado quando o usuário escolhe uma unidade
@@ -416,7 +476,7 @@ export function RealCarenciaForm() {
   return (
     <main className="p-8">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Carência Real</h1>
+        <h1 className="text-2xl font-semibold">Carência {carenciaType === 'REAL' ? 'Real' : 'Temporária'}</h1>
         <div aria-hidden className="ml-4 flex-shrink-0">
           <div className="inline-flex items-center gap-2 rounded-md px-3 py-1 bg-primary text-primary-foreground shadow">
             <Tag className="h-4 w-4" />
@@ -441,7 +501,7 @@ export function RealCarenciaForm() {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="mt-6 space-y-6">
+      <form key={formKey} onSubmit={handleSubmit} className="mt-6 space-y-6">
         <Card>
           <CardHeader>
             <div>
@@ -510,18 +570,7 @@ export function RealCarenciaForm() {
                   className={`ml-1 text-sm px-4 py-1 rounded-full transition-colors ${tipo === 'profissionalizante' ? 'bg-primary text-primary-foreground shadow' : 'text-muted-foreground hover:bg-muted/30'}`}>
                   Profissionalizante
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setTipo('especial')}
-                  className={`ml-1 text-sm px-4 py-1 rounded-full transition-colors ${tipo === 'especial' ? 'bg-primary text-primary-foreground shadow' : 'text-muted-foreground hover:bg-muted/30'}`}>
-                  Educação Especial
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setTipo('emitec')}
-                  className={`ml-1 text-sm px-4 py-1 rounded-full transition-colors ${tipo === 'emitec' ? 'bg-primary text-primary-foreground shadow' : 'text-muted-foreground hover:bg-muted/30'}`}>
-                  EMITEC
-                </button>
+                {/* Abas 'Educação Especial' e 'EMITEC' removidas temporariamente */}
               </div>
 
               
@@ -536,6 +585,22 @@ export function RealCarenciaForm() {
               {/* Card que reúne os dados formais da carência: disciplina, área pedagógica, motivo e data de início. */}
               <CardDescription className="mt-1">Coloque os dados da carência.</CardDescription>
             </div>
+            <CardAction>
+              {/* Seletor para escolher se a carência é REAL ou TEMPORARY.
+                  Comentários em português adicionados para facilitar manutenção. */}
+              <div className="flex items-center gap-2">
+                <Label className="text-xs">Tipo</Label>
+                <Select value={carenciaType} onValueChange={(v) => setCarenciaType(v as 'REAL'|'TEMPORARY')}>
+                  <SelectTrigger className="w-40">
+                    <SelectValue placeholder="Selecione" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="REAL">Real</SelectItem>
+                    <SelectItem value="TEMPORARY">Temporária</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </CardAction>
           </CardHeader>
           <CardContent>
             {/* Grid responsivo: em telas maiores mostramos 4 colunas */}
@@ -559,7 +624,7 @@ export function RealCarenciaForm() {
               <div>
                 {/* Área: p.ex. Ensino Fundamental / Médio — campo obrigatório */}
                 <Label className="mb-2">Área <span className="text-rose-500">*</span></Label>
-                <Select value={selectedArea || undefined} onValueChange={(v) => setSelectedArea(v ?? "")}>
+                <Select value={selectedArea ?? undefined} onValueChange={(v) => setSelectedArea(v ?? undefined)}>
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder="Selecione..." />
                   </SelectTrigger>
@@ -575,8 +640,8 @@ export function RealCarenciaForm() {
               <div>
                 {/* Motivo da Carência: escolha entre substituição, licença, etc. */}
                 <Label className="mb-2">Motivo da Carência <span className="text-rose-500">*</span></Label>
-                <Select value={selectedMotive || undefined} onValueChange={(v) => {
-                  const code = v ?? "";
+                <Select value={selectedMotive ?? undefined} onValueChange={(v) => {
+                  const code = v ?? undefined;
                   setSelectedMotive(code);
                   const found = motivesList.find((m) => m.code === code);
                   setSelectedMotiveId(found ? found.id : null);
@@ -588,8 +653,8 @@ export function RealCarenciaForm() {
                     {loadingMotives && <div className="p-2 text-sm text-muted-foreground">Carregando...</div>}
                     {!loadingMotives && (
                       <div>
-                        {/* Este formulário é usado para Carência Real — mostrar apenas motivos REAL */}
-                        {motivesList.filter((m) => m.type === 'REAL').map((m) => (
+                                {/* Filtra motivos de acordo com o tipo selecionado (REAL / TEMPORARY) */}
+                                {motivesList.filter((m) => m.type === carenciaType).map((m) => (
                           <SelectItem key={m.code} value={m.code}>{m.description}</SelectItem>
                         ))}
                       </div>
