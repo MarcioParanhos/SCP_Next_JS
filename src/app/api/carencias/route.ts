@@ -11,6 +11,16 @@ export async function POST(req: Request) {
   try {
     const body = await req.json()
 
+    // Segurança: não confiar em quem o cliente envia para o campo de criador.
+    // Removemos quaisquer propriedades que tentem definir o `created_by`/`created_by_id`
+    // para garantir que o usuário que criou o registro venha exclusivamente
+    // da sessão server-side obtida via `getServerSession`.
+    if (body && typeof body === 'object') {
+      if ('created_by' in body) delete (body as any).created_by
+      if ('createdBy' in body) delete (body as any).createdBy
+      if ('created_by_id' in body) delete (body as any).created_by_id
+    }
+
     // Validação mínima do payload (ajuste conforme regras de negócio)
     if (!body.unitId) {
       return NextResponse.json({ error: 'unitId é obrigatório' }, { status: 400 })
