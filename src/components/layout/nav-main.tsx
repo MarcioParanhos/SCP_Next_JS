@@ -19,14 +19,7 @@ import {
   SidebarMenuSubButton,
   SidebarMenuSubItem,
 } from "@/components/ui/sidebar";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "../ui/dialog";
+// Dialog removed: 'Incluir' now links directly to the form page
 import { Button } from "../ui/button";
 import { IconCirclePlusFilled } from "@tabler/icons-react";
 import Link from "next/link";
@@ -136,39 +129,9 @@ export function NavMain({
                       <SidebarMenuSubItem key={subItem.title}>
                         {/* VERIFICAÇÃO: Se o título for "Incluir", renderiza o Dialog */}
                         {subItem.title === "Incluir" ? (
-                          <Dialog>
-                            <DialogTrigger asChild>
-                              <SidebarMenuSubButton isActive={!!isCarenciaRoute} className={`cursor-pointer ${isCarenciaRoute ? carenciaIndicator : ''}`}>
-                                <span>{subItem.title}</span>
-                              </SidebarMenuSubButton>
-                            </DialogTrigger>
-                            <DialogContent>
-                              <DialogHeader>
-                                <DialogTitle className="uppercase">
-                                  Incluir Carência
-                                </DialogTitle>
-                                <DialogDescription>
-                                  Selecione o tipo de carência a ser lançada!
-                                </DialogDescription>
-                              </DialogHeader>
-                              <div className="flex flex-col sm:flex-row w-full gap-4 pt-4">
-                                <Button
-                                  asChild
-                                  className="flex-1 py-4 cursor-pointer"
-                                >
-                                  <Link href="/carencia/real">REAL</Link>
-                                </Button>
-                                <Button
-                                  asChild
-                                  className="flex-1 py-4 cursor-pointer"
-                                >
-                                  <Link href="/carencia/temporaria">
-                                    TEMPORÁRIA
-                                  </Link>
-                                </Button>
-                              </div>
-                            </DialogContent>
-                          </Dialog>
+                          <SidebarMenuSubButton asChild isActive={!!isCarenciaRoute} className={`cursor-pointer ${isCarenciaRoute ? carenciaIndicator : ''}`}>
+                            <Link href="/carencia/incluir"><span>{subItem.title}</span></Link>
+                          </SidebarMenuSubButton>
                         ) : (
                           /* CASO CONTRÁRIO: Mantém o comportamento padrão de link */
                           <SidebarMenuSubButton asChild isActive={isActiveSub} className={subIndicator}>

@@ -635,7 +635,7 @@ export function RealCarenciaForm() {
                 </div>
 
                 {/* badge maior e ao lado do título para deixar o tipo mais nítido ao usuário */}
-                <div className={`ml-2 inline-flex items-center rounded-full px-4 py-2 text-base font-semibold uppercase ${carenciaType === 'REAL' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
+                <div className={`ml-2 inline-flex items-center rounded-sm px-4 py-2 text-base font-semibold uppercase ${carenciaType === 'REAL' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
                   {carenciaType === 'REAL' ? <UserCheck className="h-5 w-5 mr-3" /> : <AlarmClockCheck className="h-5 w-5 mr-3" />}
                   {carenciaType === 'REAL' ? 'REAL' : 'TEMPORÁRIA'}
                 </div>
