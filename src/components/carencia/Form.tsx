@@ -2,7 +2,8 @@
 
 import React from "react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardAction } from "@/components/ui/card";
-import { CircleUserRound, X, Tag, Check, School } from "lucide-react";
+import { CircleUserRound, X, Tag, Check, School, Info } from "lucide-react";
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { Label } from "@/components/ui/label";
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import SchoolUnitSearch from "@/components/school-unit/SchoolUnitSearch";
@@ -37,6 +38,15 @@ export function RealCarenciaForm() {
   const [unitHighlightedIndex, setUnitHighlightedIndex] = React.useState<number>(-1);
   const unitResultsRef = React.useRef<HTMLDivElement | null>(null);
   const unitInputRef = React.useRef<HTMLInputElement | null>(null);
+
+  // Autofocus no primeiro campo (buscar unidade) ao abrir a página,
+  // desde que nenhuma unidade já esteja selecionada.
+  React.useEffect(() => {
+    if (!selectedUnit) {
+      // atraso zero para garantir que o input esteja montado
+      setTimeout(() => unitInputRef.current?.focus(), 0);
+    }
+  }, []);
 
   // Estrutura de linhas de disciplina/carga — atualmente usada para extender o formulário
   // cada item tem formato aproximado: { id, discipline, area, reason, startDate, morning, afternoon, night }
@@ -657,7 +667,16 @@ export function RealCarenciaForm() {
             {/* Grid responsivo: em telas maiores mostramos 4 colunas */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div>
-                <Label className="mb-2">Disciplina <span className="text-rose-500">*</span></Label>
+                <Label className="mb-2 flex items-center gap-2">Disciplina <span className="text-rose-500">*</span>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button type="button" className="ml-1 text-muted-foreground">
+                        <Info className="h-4 w-4" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent sideOffset={4}>Informe a disciplina ou adicione linhas detalhadas para especificar vagas por disciplina.</TooltipContent>
+                  </Tooltip>
+                </Label>
                 {/* Combobox para disciplinas: mostramos os nomes, mas também gravamos o id correspondente */}
                 <Combobox
                   options={disciplines.map((d) => d.name)}
@@ -674,7 +693,16 @@ export function RealCarenciaForm() {
 
               <div>
                 {/* Área: p.ex. Ensino Fundamental / Médio — campo obrigatório */}
-                <Label className="mb-2">Área <span className="text-rose-500">*</span></Label>
+                <Label className="mb-2 flex items-center gap-2">Área <span className="text-rose-500">*</span>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button type="button" className="ml-1 text-muted-foreground">
+                        <Info className="h-4 w-4" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent sideOffset={4}>Selecione a área curricular. Obrigatório quando não houver linhas detalhadas.</TooltipContent>
+                  </Tooltip>
+                </Label>
                 <Select value={selectedArea ?? undefined} onValueChange={(v) => setSelectedArea(v ?? undefined)}>
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder="Selecione..." />
@@ -690,7 +718,16 @@ export function RealCarenciaForm() {
 
               <div>
                 {/* Motivo da Carência: escolha entre substituição, licença, etc. */}
-                <Label className="mb-2">Motivo da Carência <span className="text-rose-500">*</span></Label>
+                <Label className="mb-2 flex items-center gap-2">Motivo da Carência <span className="text-rose-500">*</span>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button type="button" className="ml-1 text-muted-foreground">
+                        <Info className="h-4 w-4" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent sideOffset={4}>Escolha o motivo (ex.: substituição, licença). A lista é filtrada pelo tipo selecionado.</TooltipContent>
+                  </Tooltip>
+                </Label>
                 <Select value={selectedMotive ?? undefined} onValueChange={(v) => {
                   const code = v ?? undefined;
                   setSelectedMotive(code);
@@ -716,7 +753,16 @@ export function RealCarenciaForm() {
 
               <div>
                 {/* Data de início da vaga: input tipo date controlado */}
-                <Label className="mb-2">Início da Vaga <span className="text-rose-500">*</span></Label>
+                <Label className="mb-2 flex items-center gap-2">Início da Vaga <span className="text-rose-500">*</span>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button type="button" className="ml-1 text-muted-foreground">
+                        <Info className="h-4 w-4" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent sideOffset={4}>Data prevista para início da vaga. Use o formato YYYY-MM-DD.</TooltipContent>
+                  </Tooltip>
+                </Label>
                 <Input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} className="w-full" />
               </div>
             </div>
@@ -725,7 +771,16 @@ export function RealCarenciaForm() {
             {tipo === 'profissionalizante' && (
               <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label className="mb-2">Curso <span className="text-rose-500">*</span></Label>
+                  <Label className="mb-2 flex items-center gap-2">Curso <span className="text-rose-500">*</span>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button type="button" className="ml-1 text-muted-foreground">
+                          <Info className="h-4 w-4" />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent sideOffset={4}>Curso obrigatório para carência profissionalizante. Selecione o curso associado.</TooltipContent>
+                    </Tooltip>
+                  </Label>
                   {/* Combobox reutilizável para escolher o curso por nome.
                       Observação: armazenamos o nome do curso em `selectedCurso` (igual ao comportamento da disciplina),
                       e preenchemos automaticamente `selectedEixo` buscando o `eixo_id` do curso selecionado. */}
@@ -834,11 +889,21 @@ export function RealCarenciaForm() {
           <Button
             type="submit"
             disabled={isSelectedUnitHomologated || isSaving}
+            aria-busy={isSaving}
             title={isSelectedUnitHomologated ? "Remova a homologação antes de preparar a carência" : undefined}
             className="px-6 py-2 text-sm inline-flex items-center gap-2"
           >
-            <Check className="h-4 w-4" />
-            {isSaving ? 'Salvando...' : 'Preparar Carência'}
+            {isSaving ? (
+              <span className="inline-flex items-center">
+                <span className="w-4 h-4 mr-2 border-2 border-gray-200 border-t-primary rounded-full animate-spin" aria-hidden="true" />
+                <span>Salvando...</span>
+              </span>
+            ) : (
+              <>
+                <Check className="h-4 w-4" />
+                Preparar Carência
+              </>
+            )}
           </Button>
         </div>
         </form>
