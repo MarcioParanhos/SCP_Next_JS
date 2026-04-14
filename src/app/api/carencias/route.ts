@@ -126,3 +126,108 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: err?.message ?? 'Erro interno' }, { status: 500 })
   }
 }
+
+// Rota GET /api/carencias
+// Retorna uma lista de carências com dados relacionados para exibição na tabela.
+export async function GET(req: Request) {
+  try {
+    const { searchParams } = new URL(req.url);
+
+    const pageSizeParam = searchParams.get("pageSize") ?? "50";
+    const pageSize = Math.min(Number(pageSizeParam) || 50, 200);
+    const cursor = searchParams.get("cursor");
+    const search = searchParams.get("search") ?? undefined;
+    const nteId = searchParams.get("nteId");
+    const municipalityId = searchParams.get("municipalityId");
+    const disciplineId = searchParams.get("disciplineId");
+    const typeFilter = searchParams.get("type");
+
+    // Construímos cláusulas condicionais: filtros específicos (AND) e busca livre (OR)
+    const filters: any[] = [];
+    if (nteId) filters.push({ schoolUnit: { municipality: { nte_id: Number(nteId) } } });
+    if (municipalityId) filters.push({ schoolUnit: { municipality: { id: Number(municipalityId) } } });
+    if (disciplineId) filters.push({ discipline_id: Number(disciplineId) });
+    if (typeFilter) filters.push({ type: typeFilter });
+
+    const searchClause = search
+      ? {
+          OR: [
+            { schoolUnit: { name: { contains: search, mode: "insensitive" } } },
+            { schoolUnit: { sec_cod: { contains: search, mode: "insensitive" } } },
+            { schoolUnit: { municipality: { name: { contains: search, mode: "insensitive" } } } },
+            { schoolUnit: { municipality: { nte: { name: { contains: search, mode: "insensitive" } } } } },
+            { server: { name: { contains: search, mode: "insensitive" } } },
+            { discipline: { name: { contains: search, mode: "insensitive" } } },
+            { motive: { description: { contains: search, mode: "insensitive" } } },
+          ],
+        }
+      : null;
+
+    const where: any = {};
+    if (filters.length > 0) where.AND = filters;
+    if (searchClause) where.AND = (where.AND ?? []).concat(searchClause);
+
+    const take = pageSize + 1;
+
+    const rows = await prisma.carencia.findMany({
+      where,
+      take,
+      cursor: cursor ? { id: Number(cursor) } : undefined,
+      skip: cursor ? 1 : 0,
+      orderBy: { id: "desc" },
+      include: {
+        schoolUnit: {
+          select: {
+            id: true,
+            name: true,
+            sec_cod: true,
+            municipality: { select: { name: true, nte: { select: { name: true } } } },
+            // inclui apenas a última ação de homologação (mesmo padrão da rota /api/school_units)
+            homologations: { select: { action: true }, orderBy: { createdAt: "desc" }, take: 1 },
+          },
+        },
+        server: { select: { id: true, name: true, enrollment: true } },
+        discipline: { select: { id: true, name: true } },
+        motive: { select: { id: true, code: true, description: true } },
+      },
+    });
+
+    const hasNext = rows.length > pageSize;
+    if (hasNext) rows.pop();
+
+    const data = rows.map((c) => {
+      // A checagem é exatamente igual à lógica do school_units: última ação === "HOMOLOGATED"
+      const lastAction = (c.schoolUnit as any)?.homologations?.[0]?.action ?? null;
+      const homologated = lastAction === "HOMOLOGATED";
+
+      return {
+        id: c.id,
+        tipo: c.type,
+        nte: c.schoolUnit?.municipality?.nte?.name ?? null,
+        municipality: c.schoolUnit?.municipality?.name ?? null,
+        motive: c.motive ? (c.motive.description ?? c.motive.code ?? null) : null,
+        servidor: c.server ? { id: c.server.id, name: c.server.name, registration: c.server.enrollment } : null,
+        discipline: c.discipline ? c.discipline.name : null,
+        morning: c.morning,
+        afternoon: c.afternoon,
+        night: c.night,
+        total: c.total,
+        schoolUnit: c.schoolUnit
+          ? {
+              id: c.schoolUnit.id,
+              name: c.schoolUnit.name,
+              code: c.schoolUnit.sec_cod,
+              homologated,
+            }
+          : null,
+      };
+    });
+
+    const nextCursor = hasNext ? String(rows[rows.length - 1]?.id) : null;
+
+    return NextResponse.json({ data, nextCursor, hasNext }, { status: 200 });
+  } catch (err: any) {
+    console.error("Erro ao buscar carências:", err);
+    return NextResponse.json({ error: err?.message ?? "Erro interno" }, { status: 500 });
+  }
+}

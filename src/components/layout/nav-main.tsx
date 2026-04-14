@@ -40,6 +40,8 @@ export function NavMain({
 }) {
   const pathname = usePathname();
   const isCarenciaRoute = pathname?.startsWith("/carencia");
+  // Distinguimos rota de inclusão (/carencia/incluir) da rota de busca (/carencias)
+  const isCarenciaIncluir = pathname === "/carencia/incluir" || pathname?.startsWith("/carencia/incluir");
   const [openGroup, setOpenGroup] = useState<string | null>(null);
 
   useEffect(() => {
@@ -129,7 +131,7 @@ export function NavMain({
                       <SidebarMenuSubItem key={subItem.title}>
                         {/* VERIFICAÇÃO: Se o título for "Incluir", renderiza o Dialog */}
                         {subItem.title === "Incluir" ? (
-                          <SidebarMenuSubButton asChild isActive={!!isCarenciaRoute} className={`cursor-pointer ${isCarenciaRoute ? carenciaIndicator : ''}`}>
+                          <SidebarMenuSubButton asChild isActive={!!isCarenciaIncluir} className={`cursor-pointer ${isCarenciaIncluir ? carenciaIndicator : ''}`}>
                             <Link href="/carencia/incluir"><span>{subItem.title}</span></Link>
                           </SidebarMenuSubButton>
                         ) : (

@@ -12,12 +12,17 @@ export async function GET(_req: Request, context: any) {
 
     const s = await prisma.schoolUnit.findUnique({
       where: { id },
-      select: { id: true, name: true, sec_cod: true },
+      select: {
+        id: true,
+        name: true,
+        sec_cod: true,
+        municipality: { select: { name: true, nte: { select: { name: true } } } },
+      },
     });
 
     if (!s) return new NextResponse("Not found", { status: 404 });
 
-    return NextResponse.json({ data: { id: s.id, schoolUnit: s.name, sec_code: s.sec_cod ?? "" } });
+    return NextResponse.json({ data: { id: s.id, schoolUnit: s.name, sec_code: s.sec_cod ?? "", municipality: s.municipality?.name ?? null, nte: s.municipality?.nte?.name ?? null } });
   } catch (err) {
     console.error("Error in GET /api/school_units/[id]:", err);
     return new NextResponse("Internal Server Error", { status: 500 });

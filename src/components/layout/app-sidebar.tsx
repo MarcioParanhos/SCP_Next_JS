@@ -33,10 +33,10 @@ const data = {
       url: "#",
       icon: UserMinus,
       isActive: true,
-      items: [
-        { title: "Incluir", url: "#" },
-        { title: "Buscar", url: "#" },
-      ],
+          items: [
+            { title: "Incluir", url: "/carencia/incluir" },
+            { title: "Buscar", url: "/carencias" },
+          ],
     },
     {
       title: "PROVIMENTO",
