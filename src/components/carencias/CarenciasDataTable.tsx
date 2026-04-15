@@ -7,9 +7,10 @@
 
 import * as React from "react";
 import { Filter, TableProperties } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
-import { IconLayoutColumns, IconChevronDown, IconDotsVertical, IconX, IconCheck } from "@tabler/icons-react";
+import { IconLayoutColumns, IconChevronDown, IconDotsVertical, IconX, IconCheck, IconChevronLeft, IconChevronRight, IconChevronsLeft, IconChevronsRight } from "@tabler/icons-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { DropdownMenuCheckboxItem } from "@/components/ui/dropdown-menu";
 import {
@@ -27,7 +28,8 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import { toast } from "sonner";
+import toast from "react-hot-toast";
+import ConfirmDialog from "@/components/ui/confirm-dialog";
 
 type CarenciaRow = {
   id: number | string;
@@ -61,6 +63,9 @@ export function CarenciasDataTable() {
   // campo de busca livre removido — usamos apenas os filtros estruturados
   const [rows, setRows] = React.useState<CarenciaRow[]>([]);
   const [loading, setLoading] = React.useState(false);
+  // Paginação client-side
+  const [pageSize, setPageSize] = React.useState(10);
+  const [pageIndex, setPageIndex] = React.useState(0);
   // Filtros inteligentes (NTE -> Município, Disciplina)
   const [ntes, setNtes] = React.useState<{ id: string; name: string }[]>([]);
   const [municipalities, setMunicipalities] = React.useState<{ id: string; name: string }[]>([]);
@@ -99,6 +104,8 @@ export function CarenciasDataTable() {
   const [colVisibility, setColVisibility] = React.useState<Record<string, boolean>>(
     () => Object.fromEntries(columnDefs.map((c) => [c.id, true]))
   );
+  // Estado para controlar exclusão de carência
+  const [deletingId, setDeletingId] = React.useState<number | string | null>(null);
   const show = (id: string) => colVisibility[id] !== false;
   const toggleCol = (id: string) => setColVisibility((prev) => ({ ...prev, [id]: !prev[id] }));
 
@@ -352,6 +359,14 @@ export function CarenciasDataTable() {
 
   const showEff = (id: string) => show(id) && !isContextHidden(id);
 
+  // Reseta para a primeira página sempre que os dados ou o tamanho de página mudar
+  React.useEffect(() => {
+    setPageIndex(0);
+  }, [rows, pageSize]);
+
+  const pageCount = Math.max(1, Math.ceil(rows.length / pageSize));
+  const paginatedRows = rows.slice(pageIndex * pageSize, (pageIndex + 1) * pageSize);
+
   return (
     <>
       <Tabs defaultValue="geral" className="w-full flex-col justify-start gap-6">
@@ -555,7 +570,7 @@ export function CarenciasDataTable() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  rows.map((r) => (
+                  paginatedRows.map((r) => (
                     <TableRow key={String(r.id)}>
                       {showEff("nte")          && <TableCell className="text-sm text-muted-foreground">{r.nte ?? <span className="text-muted-foreground">—</span>}</TableCell>}
                       {showEff("municipality") && <TableCell className="text-sm text-muted-foreground">{r.municipality ?? <span className="text-muted-foreground">—</span>}</TableCell>}
@@ -614,7 +629,9 @@ export function CarenciasDataTable() {
                           <DropdownMenuContent align="end" className="w-32">
                             <DropdownMenuItem>Ver detalhes</DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem className="text-destructive">Remover</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => { setDeletingId(r.id); }} className="text-destructive">
+                                  <Trash2 className="size-4 mr-2" /> Excluir
+                                </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
@@ -624,6 +641,103 @@ export function CarenciasDataTable() {
               </TableBody>
             </Table>
           </div>
+              <ConfirmDialog
+                open={deletingId !== null}
+                onOpenChange={(v) => { if (!v) setDeletingId(null); }}
+                title="Excluir carência"
+                description="Deseja realmente excluir esta carência? Esta ação não pode ser desfeita."
+                confirmLabel="Excluir"
+                onConfirm={async () => {
+                  if (deletingId == null) return;
+                  try {
+                    const res = await fetch(`/api/carencias/${deletingId}`, { method: "DELETE" });
+                    const j = await res.json().catch(() => ({}));
+                    if (!res.ok) {
+                      toast.error(j.error ?? "Erro ao excluir carência");
+                    } else {
+                      toast.success("Carência excluída com sucesso");
+                      // Recarrega os dados
+                      buscarCarencias();
+                    }
+                  } catch (e) {
+                    toast.error("Erro de conexão. Tente novamente.");
+                  } finally {
+                    setDeletingId(null);
+                  }
+                }}
+              />
+
+          {/* Rodapé de paginação */}
+          <div className="flex items-center justify-between px-4 py-2">
+            <div className="text-muted-foreground hidden flex-1 text-sm lg:flex">
+              {rows.length} registro(s) no total
+            </div>
+            <div className="flex w-full items-center gap-8 lg:w-fit">
+              <div className="hidden items-center gap-2 lg:flex">
+                <Label htmlFor="rows-per-page-carencias" className="text-sm font-medium">
+                  Linhas por página
+                </Label>
+                <Select
+                  value={`${pageSize}`}
+                  onValueChange={(value) => setPageSize(Number(value))}
+                >
+                  <SelectTrigger size="sm" className="w-20" id="rows-per-page-carencias">
+                    <SelectValue placeholder={pageSize} />
+                  </SelectTrigger>
+                  <SelectContent side="top">
+                    {[10, 20, 30, 40, 50].map((ps) => (
+                      <SelectItem key={ps} value={`${ps}`}>{ps}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex w-fit items-center justify-center text-sm font-medium">
+                Página {pageIndex + 1} de {pageCount}
+              </div>
+              <div className="ml-auto flex items-center gap-2 lg:ml-0">
+                <Button
+                  variant="outline"
+                  className="hidden h-8 w-8 p-0 lg:flex"
+                  onClick={() => setPageIndex(0)}
+                  disabled={pageIndex === 0}
+                >
+                  <span className="sr-only">Ir para a primeira página</span>
+                  <IconChevronsLeft />
+                </Button>
+                <Button
+                  variant="outline"
+                  className="size-8"
+                  size="icon"
+                  onClick={() => setPageIndex((i) => Math.max(0, i - 1))}
+                  disabled={pageIndex === 0}
+                >
+                  <span className="sr-only">Ir para a página anterior</span>
+                  <IconChevronLeft />
+                </Button>
+                <Button
+                  variant="outline"
+                  className="size-8"
+                  size="icon"
+                  onClick={() => setPageIndex((i) => Math.min(pageCount - 1, i + 1))}
+                  disabled={pageIndex >= pageCount - 1}
+                >
+                  <span className="sr-only">Ir para a próxima página</span>
+                  <IconChevronRight />
+                </Button>
+                <Button
+                  variant="outline"
+                  className="hidden size-8 lg:flex"
+                  size="icon"
+                  onClick={() => setPageIndex(pageCount - 1)}
+                  disabled={pageIndex >= pageCount - 1}
+                >
+                  <span className="sr-only">Ir para a última página</span>
+                  <IconChevronsRight />
+                </Button>
+              </div>
+            </div>
+          </div>
+
         </TabsContent>
       </Tabs>
     </>

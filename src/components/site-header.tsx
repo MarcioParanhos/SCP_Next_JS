@@ -7,6 +7,7 @@ import { ModeToggle } from "./ui/mode-toggle"
 import { ThemeSelector } from "./theme-selector"
 // Breadcrumbs: componente cliente que mostra a navegação atual
 import Breadcrumbs from "@/components/ui/Breadcrumbs"
+import { Toaster as HotToaster } from "react-hot-toast"
 
 export function SiteHeader({ showBreadcrumbs = true }: { showBreadcrumbs?: boolean }) {
   return (
@@ -27,6 +28,7 @@ export function SiteHeader({ showBreadcrumbs = true }: { showBreadcrumbs?: boole
         <div className="ml-auto flex items-center gap-2">
           <ThemeSelector />
           <ModeToggle />
+          <HotToaster position="top-center" />
         </div>
       </div>
     </header>

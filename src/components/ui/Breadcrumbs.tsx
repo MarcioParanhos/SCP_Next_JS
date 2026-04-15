@@ -32,6 +32,7 @@ const LABELS: Record<string, string> = {
   // Suporte para rota em inglês `/courses`
   courses: "Cursos",
   login: "Login",
+  carencias: "Quadro Geral de Carências",
 }
 
 export default function Breadcrumbs() {
