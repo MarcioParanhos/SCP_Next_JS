@@ -70,10 +70,12 @@ export function CarenciasDataTable() {
   const [ntes, setNtes] = React.useState<{ id: string; name: string }[]>([]);
   const [municipalities, setMunicipalities] = React.useState<{ id: string; name: string }[]>([]);
   const [disciplines, setDisciplines] = React.useState<{ id: number; name: string }[]>([]);
+  const [motives, setMotives] = React.useState<{ id: number; name: string }[]>([]);
 
   const [selectedNte, setSelectedNte] = React.useState<string | null>(null);
   const [selectedMunicipality, setSelectedMunicipality] = React.useState<string | null>(null);
   const [selectedDiscipline, setSelectedDiscipline] = React.useState<string | null>(null);
+  const [selectedMotive, setSelectedMotive] = React.useState<string | null>(null);
   // Sheet (painel) de filtros avançados
   const [openSheet, setOpenSheet] = React.useState(false);
   const [sheetNte, setSheetNte] = React.useState<string>(selectedNte ?? "ALL");
@@ -82,9 +84,13 @@ export function CarenciasDataTable() {
   const [sheetSecCode, setSheetSecCode] = React.useState<string>("");
   const [sheetDiscipline, setSheetDiscipline] = React.useState<string>(selectedDiscipline ?? "ALL");
   const [sheetType, setSheetType] = React.useState<string>("ALL");
+  const [sheetMotive, setSheetMotive] = React.useState<string>(selectedMotive ?? "ALL");
+  const [sheetRegistration, setSheetRegistration] = React.useState<string>("");
   const [appliedUnitName, setAppliedUnitName] = React.useState<string | null>(null);
   const [appliedSecCode, setAppliedSecCode] = React.useState<string | null>(null);
   const [appliedType, setAppliedType] = React.useState<string | null>(null);
+  const [appliedMotive, setAppliedMotive] = React.useState<string | null>(null);
+  const [appliedRegistration, setAppliedRegistration] = React.useState<string | null>(null);
 
   // Mapa de colunas para visibilidade customizável (Customizar Colunas)
   const columnDefs = [
@@ -129,18 +135,32 @@ export function CarenciasDataTable() {
         const discJson = await resDisc.json();
         setDisciplines(discJson.data ?? []);
       }
+      // carregar motivos para filtro
+      try {
+        const resMot = await fetch("/api/motives?pageSize=500");
+        if (resMot.ok) {
+          const motJson = await resMot.json();
+          const raw = motJson.data ?? motJson ?? [];
+          const mapped = raw.map((m: any) => ({ id: m.id, name: m.description ?? m.name ?? m.code ?? String(m.id) }));
+          setMotives(mapped);
+        }
+      } catch (e) {
+        // ignore
+      }
     } catch (e) {
       // ignore
     }
   }
 
-  type BuscaOpts = { q?: string; nteId?: string | null; municipalityId?: string | null; disciplineId?: string | null; typeFilter?: string | null };
+  type BuscaOpts = { q?: string; nteId?: string | null; municipalityId?: string | null; disciplineId?: string | null; typeFilter?: string | null; motiveId?: string | null; registration?: string | null };
 
   async function buscarCarencias(opts?: BuscaOpts) {
     // Usa valores do opts quando fornecidos (evita problema de stale closure após setState)
     const nteId        = opts && "nteId"        in opts ? opts.nteId        : selectedNte;
     const municipalityId = opts && "municipalityId" in opts ? opts.municipalityId : selectedMunicipality;
     const disciplineId = opts && "disciplineId" in opts ? opts.disciplineId : selectedDiscipline;
+    const motiveId     = opts && "motiveId"     in opts ? opts.motiveId     : appliedMotive;
+    const registration = opts && "registration" in opts ? opts.registration : appliedRegistration;
     const typeFilter   = opts && "typeFilter"   in opts ? opts.typeFilter   : appliedType;
     const q            = opts?.q;
 
@@ -157,6 +177,8 @@ export function CarenciasDataTable() {
         if (nteId) params.set("nteId", nteId);
         if (municipalityId) params.set("municipalityId", municipalityId);
         if (disciplineId) params.set("disciplineId", disciplineId);
+        if (motiveId) params.set("motiveId", motiveId);
+        if (registration) params.set("registration", registration);
         if (typeFilter) params.set("type", typeFilter);
 
         const res = await fetch(`/api/carencias?${params.toString()}`);
@@ -237,6 +259,8 @@ export function CarenciasDataTable() {
       setSheetNte(selectedNte ?? "ALL");
       setSheetMunicipality(selectedMunicipality ?? "ALL");
       setSheetDiscipline(selectedDiscipline ?? "ALL");
+      setSheetMotive(selectedMotive ?? "ALL");
+      setSheetRegistration(appliedRegistration ?? "");
       // carrega municípios para o sheet caso NTE já esteja definido
       if (selectedNte) {
         (async () => {
@@ -276,19 +300,25 @@ export function CarenciasDataTable() {
     const newMun   = sheetMunicipality === "ALL" ? null : sheetMunicipality;
     const newDisc  = sheetDiscipline === "ALL" ? null : sheetDiscipline;
     const newType  = sheetType === "ALL" ? null : sheetType;
+    const newMot   = sheetMotive === "ALL" ? null : sheetMotive;
+    const newReg   = sheetRegistration.trim() || null;
     const newUnit  = sheetUnitName.trim() || null;
     const newSec   = sheetSecCode.trim() || null;
     setSelectedNte(newNte);
     setSelectedMunicipality(newMun);
     setSelectedDiscipline(newDisc);
+    setSelectedMotive(newMot);
     setAppliedType(newType);
     setAppliedUnitName(newUnit);
     setAppliedSecCode(newSec);
+    setAppliedMotive(newMot);
+    setAppliedRegistration(newReg);
     setOpenSheet(false);
     const searchFragments: string[] = [];
     if (newUnit) searchFragments.push(newUnit);
     if (newSec) searchFragments.push(newSec);
-    buscarCarencias({ q: searchFragments.join(" ") || undefined, nteId: newNte, municipalityId: newMun, disciplineId: newDisc, typeFilter: newType });
+    if (newReg) searchFragments.push(newReg);
+    buscarCarencias({ q: searchFragments.join(" ") || undefined, nteId: newNte, municipalityId: newMun, disciplineId: newDisc, typeFilter: newType, motiveId: newMot, registration: newReg });
   }
 
   function clearFilters() {
@@ -298,12 +328,17 @@ export function CarenciasDataTable() {
     setSheetSecCode("");
     setSheetDiscipline("ALL");
     setSheetType("ALL");
+    setSheetMotive("ALL");
+    setSheetRegistration("");
     setSelectedNte(null);
     setSelectedMunicipality(null);
     setSelectedDiscipline(null);
     setAppliedType(null);
     setAppliedUnitName(null);
     setAppliedSecCode(null);
+    setSelectedMotive(null);
+    setAppliedMotive(null);
+    setAppliedRegistration(null);
     buscarCarencias({ nteId: null, municipalityId: null, disciplineId: null, typeFilter: null });
   }
 
@@ -314,16 +349,22 @@ export function CarenciasDataTable() {
     const newType = id === "type"        ? null : appliedType;
     const newUnit = id === "unitName"    ? null : appliedUnitName;
     const newSec  = id === "secCode"     ? null : appliedSecCode;
+    const newMot  = id === "motive"      ? null : appliedMotive;
+    const newReg  = id === "registration" ? null : appliedRegistration;
     setSelectedNte(newNte);
     setSelectedMunicipality(newMun);
     setSelectedDiscipline(newDisc);
     setAppliedType(newType);
     setAppliedUnitName(newUnit);
     setAppliedSecCode(newSec);
+    setSelectedMotive(newMot);
+    setAppliedMotive(newMot);
+    setAppliedRegistration(newReg);
     const searchFragments: string[] = [];
     if (newUnit) searchFragments.push(newUnit);
     if (newSec) searchFragments.push(newSec);
-    buscarCarencias({ q: searchFragments.join(" ") || undefined, nteId: newNte, municipalityId: newMun, disciplineId: newDisc, typeFilter: newType });
+    if (newReg) searchFragments.push(newReg);
+    buscarCarencias({ q: searchFragments.join(" ") || undefined, nteId: newNte, municipalityId: newMun, disciplineId: newDisc, typeFilter: newType, motiveId: newMot, registration: newReg });
   }
 
   // Filtros ativos para renderizar os badges
@@ -334,6 +375,8 @@ export function CarenciasDataTable() {
     ...(appliedUnitName    ? [{ id: "unitName",    label: "Unidade",    value: appliedUnitName }] : []),
     ...(appliedSecCode     ? [{ id: "secCode",     label: "Código SEC", value: appliedSecCode }] : []),
     ...(appliedType        ? [{ id: "type",        label: "Tipo",       value: appliedType === "REAL" ? "Real" : "Temporária" }] : []),
+    ...(appliedMotive      ? [{ id: "motive",      label: "Motivo",     value: motives.find((m) => String(m.id) === appliedMotive)?.name ?? appliedMotive }] : []),
+    ...(appliedRegistration ? [{ id: "registration", label: "Matrícula", value: appliedRegistration }] : []),
   ];
 
   // Agrupamento por contexto: quando o usuário filtra por NTE / Município / Unidade,
@@ -470,6 +513,24 @@ export function CarenciasDataTable() {
                         {disciplines.map((d) => (<SelectItem key={d.id} value={String(d.id)}>{d.name}</SelectItem>))}
                       </SelectContent>
                     </Select>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="sheet-motive" className="mb-1">Motivo</Label>
+                    <Select value={sheetMotive} onValueChange={(v) => setSheetMotive(v)}>
+                      <SelectTrigger id="sheet-motive" size="sm" className="w-full h-9">
+                        <SelectValue placeholder="Selecione motivo" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="ALL">Nenhum</SelectItem>
+                        {motives.map((m) => (<SelectItem key={m.id} value={String(m.id)}>{m.name}</SelectItem>))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="sheet-registration" className="mb-2">Matrícula do servidor</Label>
+                    <Input id="sheet-registration" className="w-full h-9" placeholder="Matrícula" value={sheetRegistration} onChange={(e) => setSheetRegistration(e.target.value)} />
                   </div>
 
                   <div className="grid grid-cols-2 gap-2">
