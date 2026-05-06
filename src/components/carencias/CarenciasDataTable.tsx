@@ -29,6 +29,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import toast from "react-hot-toast";
+import { useRouter } from "next/navigation";
 import ConfirmDialog from "@/components/ui/confirm-dialog";
 
 type CarenciaRow = {
@@ -101,10 +102,7 @@ export function CarenciasDataTable() {
     { id: "servidor", label: "Servidor" },
     { id: "discipline", label: "Disciplina" },
     { id: "motive", label: "Motivo" },
-    { id: "morning", label: "Manhã" },
-    { id: "afternoon", label: "Tarde" },
-    { id: "night", label: "Noite" },
-    { id: "total", label: "Total" },
+    // Removidas colunas de turnos e total conforme solicitação
     { id: "tipo", label: "Tipo" },
   ] as const;
   const [colVisibility, setColVisibility] = React.useState<Record<string, boolean>>(
@@ -112,6 +110,8 @@ export function CarenciasDataTable() {
   );
   // Estado para controlar exclusão de carência
   const [deletingId, setDeletingId] = React.useState<number | string | null>(null);
+  // Router para navegação cliente (usar para abrir página de detalhe)
+  const router = useRouter();
   const show = (id: string) => colVisibility[id] !== false;
   const toggleCol = (id: string) => setColVisibility((prev) => ({ ...prev, [id]: !prev[id] }));
 
@@ -603,10 +603,7 @@ export function CarenciasDataTable() {
                 {showEff("servidor")     && <TableHead className="font-semibold">Servidor</TableHead>}
                 {showEff("discipline")   && <TableHead className="font-semibold">Disciplina</TableHead>}
                 {showEff("motive")       && <TableHead className="font-semibold">Motivo</TableHead>}
-                {showEff("morning")      && <TableHead className="w-20 text-center font-semibold"><span className="hidden sm:inline">Manhã</span><span className="inline sm:hidden">M</span></TableHead>}
-                {showEff("afternoon")    && <TableHead className="w-20 text-center font-semibold"><span className="hidden sm:inline">Tarde</span><span className="inline sm:hidden">T</span></TableHead>}
-                {showEff("night")        && <TableHead className="w-20 text-center font-semibold"><span className="hidden sm:inline">Noite</span><span className="inline sm:hidden">N</span></TableHead>}
-                {showEff("total")        && <TableHead className="w-24 text-center font-semibold">Total</TableHead>}
+                {/* Colunas de turnos e total removidas */}
                 {showEff("tipo")         && <TableHead className="w-28 font-semibold">Tipo</TableHead>}
                   <TableHead className="w-12 text-right">Ações</TableHead>
                 </TableRow>
@@ -668,10 +665,7 @@ export function CarenciasDataTable() {
                       )}
                       {showEff("discipline")   && <TableCell>{r.discipline ? r.discipline : <span className="text-muted-foreground">—</span>}</TableCell>}
                       {showEff("motive")       && <TableCell className="whitespace-normal max-w-xs">{r.motive ? r.motive : <span className="text-muted-foreground">—</span>}</TableCell>}
-                      {showEff("morning")      && <TableCell className="text-center">{r.morning ?? 0}</TableCell>}
-                      {showEff("afternoon")    && <TableCell className="text-center">{r.afternoon ?? 0}</TableCell>}
-                      {showEff("night")        && <TableCell className="text-center">{r.night ?? 0}</TableCell>}
-                      {showEff("total")        && <TableCell className="text-center font-semibold">{r.total ?? (Number(r.morning || 0) + Number(r.afternoon || 0) + Number(r.night || 0))}</TableCell>}
+                      {/* Células de turnos e total removidas */}
                       {showEff("tipo") && (
                         <TableCell>
                           <Badge className={`${r.tipo === "REAL" ? "bg-blue-600 text-white" : r.tipo === "TEMPORARY" ? "bg-amber-500 text-white" : "bg-muted text-muted-foreground"} w-20 justify-center`}>
@@ -688,7 +682,7 @@ export function CarenciasDataTable() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="w-32">
-                            <DropdownMenuItem>Ver detalhes</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => { router.push(`/carencias/${r.id}`); }}>Ver detalhes</DropdownMenuItem>
                             <DropdownMenuSeparator />
                                 <DropdownMenuItem onClick={() => { setDeletingId(r.id); }} className="text-destructive">
                                   <Trash2 className="size-4 mr-2" /> Excluir
