@@ -151,26 +151,27 @@ export default async function Page({ params }: { params: { id: string } }) {
                     {/* Formulário de edição inline */}
                     <div id="edit-form">
                       <CarenciaEditForm
-                      carenciaId={carencia.id}
-                      initial={{
-                        server_id:     carencia.server_id     ?? null,
-                        server_name:   carencia.server?.name  ?? null,
-                        motive_id:     carencia.motive_id     ?? null,
-                        area_id:       carencia.area_id       ?? null,
-                        discipline_id: carencia.discipline_id ?? null,
-                        rows: (carencia.rows ?? []).map((r: any) => ({
-                          id:        r.id,
-                          discipline: r.discipline ?? "",
-                          area:       r.area       ?? "",
-                          morning:    r.morning    ?? 0,
-                          afternoon:  r.afternoon  ?? 0,
-                          night:      r.night      ?? 0,
-                        })),
-                      }}
-                      servidores={[]}
-                      motives={motivesList.map((m) => ({ id: m.id, name: m.description }))}
-                      areas={areasList.map((a) => ({ id: a.id, name: a.name }))}
-                      disciplines={disciplinesList.map((d) => ({ id: d.id, name: d.name }))}
+                        carenciaId={carencia.id}
+                        initial={{
+                          server_id:     carencia.server_id     ?? null,
+                          server_name:   carencia.server?.name  ?? null,
+                          motive_id:     carencia.motive_id     ?? null,
+                          area_id:       carencia.area_id       ?? null,
+                          discipline_id: carencia.discipline_id ?? null,
+                          observations:  carencia.observations  ?? "",
+                          rows: (carencia.rows ?? []).map((r: any) => ({
+                            id:        r.id,
+                            discipline: r.discipline ?? "",
+                            area:       r.area       ?? "",
+                            morning:    r.morning    ?? 0,
+                            afternoon:  r.afternoon  ?? 0,
+                            night:      r.night      ?? 0,
+                          })),
+                        }}
+                        servidores={[]}
+                        motives={motivesList.map((m) => ({ id: m.id, name: m.description }))}
+                        areas={areasList.map((a) => ({ id: a.id, name: a.name }))}
+                        disciplines={disciplinesList.map((d) => ({ id: d.id, name: d.name }))}
                       />
                     </div>
 
@@ -214,7 +215,8 @@ export default async function Page({ params }: { params: { id: string } }) {
                       <div className="text-sm text-muted-foreground mb-2">Observações</div>
                       <textarea
                         aria-label="Observações"
-                        defaultValue={""}
+                        defaultValue={carencia.observations ?? ""}
+                        readOnly
                         className="w-full min-h-[12vh] max-h-[30vh] p-3 rounded-md border bg-background resize-vertical"
                       />
                     </div>

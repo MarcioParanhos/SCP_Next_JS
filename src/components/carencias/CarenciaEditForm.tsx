@@ -10,6 +10,7 @@ import { Pencil, X, Save, User } from "lucide-react";
 import toast from "react-hot-toast";
 import { useRouter } from "next/navigation";
 import ServerSearch from "@/components/server/ServerSearch";
+import DisciplineSearch from "@/components/discipline/DisciplineSearch";
 
 type Row = {
   id?: number;
@@ -30,6 +31,7 @@ type Props = {
     motive_id?: number | null;
     area_id?: number | null;
     discipline_id?: number | null;
+    observations?: string | null;
     rows: Row[];
   };
   servidores: Option[];
@@ -55,14 +57,30 @@ export default function CarenciaEditForm({ carenciaId, initial, motives, areas, 
   const [motiveId, setMotiveId]         = React.useState<string>(initial.motive_id     ? String(initial.motive_id)     : "");
   const [areaId, setAreaId]             = React.useState<string>(initial.area_id       ? String(initial.area_id)       : "");
   const [disciplineId, setDisciplineId] = React.useState<string>(initial.discipline_id ? String(initial.discipline_id) : "");
+  const [observations, setObservations] = React.useState<string>(initial.observations ?? "");
   const [rows, setRows]                 = React.useState<Row[]>(initial.rows);
   const [saving, setSaving]             = React.useState(false);
+
+  // Disciplina search (controlled, like ServerSearch)
+  const [disciplineQuery, setDisciplineQuery]           = React.useState<string>(initial.discipline_id ? "" : "");
+  const [debouncedDisciplineQuery, setDebouncedDisciplineQuery] = React.useState<string>("");
+  const [disciplineResults, setDisciplineResults]       = React.useState<any[]>([]);
+  const [loadingDisciplines, setLoadingDisciplines]     = React.useState(false);
+  const [disciplineResultsOpen, setDisciplineResultsOpen] = React.useState(false);
+  const [disciplineHighlightedIndex, setDisciplineHighlightedIndex] = React.useState(0);
+  const disciplineInputRef = React.useRef<HTMLInputElement | null>(null);
 
   // Debounce
   React.useEffect(() => {
     const t = setTimeout(() => setDebouncedQuery(serverQuery.trim()), 300);
     return () => clearTimeout(t);
   }, [serverQuery]);
+
+  // Debounce disciplines
+  React.useEffect(() => {
+    const t = setTimeout(() => setDebouncedDisciplineQuery(disciplineQuery.trim()), 300);
+    return () => clearTimeout(t);
+  }, [disciplineQuery]);
 
   // Listen for CustomEvent dispatched by the header Edit button
   React.useEffect(() => {
@@ -91,6 +109,24 @@ export default function CarenciaEditForm({ carenciaId, initial, motives, areas, 
     return () => { mounted = false; };
   }, [debouncedQuery]);
 
+  // Fetch disciplinas quando query mudar
+  React.useEffect(() => {
+    if (!debouncedDisciplineQuery) { setDisciplineResults([]); return; }
+    let mounted = true;
+    (async () => {
+      setLoadingDisciplines(true);
+      try {
+        const res = await fetch(`/api/disciplines?q=${encodeURIComponent(debouncedDisciplineQuery)}&pageSize=20`);
+        if (!res.ok) return;
+        const json = await res.json();
+        if (mounted) { setDisciplineResults(json.data ?? []); setDisciplineHighlightedIndex(0); setDisciplineResultsOpen(true); }
+      } catch { /* ignore */ } finally {
+        if (mounted) setLoadingDisciplines(false);
+      }
+    })();
+    return () => { mounted = false; };
+  }, [debouncedDisciplineQuery]);
+
   function updateRow(idx: number, field: "morning" | "afternoon" | "night", value: number) {
     setRows((prev) => prev.map((r, i) => (i === idx ? { ...r, [field]: value } : r)));
   }
@@ -106,6 +142,7 @@ export default function CarenciaEditForm({ carenciaId, initial, motives, areas, 
           motive_id:     motiveId     || null,
           area_id:       areaId       || null,
           discipline_id: disciplineId || null,
+          observations:  observations || null,
           rows: rows.map((r) => ({
             discipline: r.discipline || null,
             area:       r.area       || null,
@@ -215,17 +252,18 @@ export default function CarenciaEditForm({ carenciaId, initial, motives, areas, 
 
               <div className="flex flex-col gap-1.5">
                 <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Disciplina</Label>
-                <Select value={disciplineId} onValueChange={setDisciplineId}>
-                  <SelectTrigger className="h-14 text-sm px-3 w-140 truncate">
-                    <SelectValue placeholder="Selecionar..." />
-                  </SelectTrigger>
-                   <SelectContent>
-                    <SelectItem value="0">— Nenhuma —</SelectItem>
-                    {disciplines.map((d) => (
-                      <SelectItem key={d.id} value={String(d.id)}>{d.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <DisciplineSearch
+                  disciplineQuery={disciplineQuery}
+                  setDisciplineQuery={setDisciplineQuery}
+                  loading={loadingDisciplines}
+                  disciplines={disciplineResults}
+                  resultsOpen={disciplineResultsOpen}
+                  setResultsOpen={setDisciplineResultsOpen}
+                  highlightedIndex={disciplineHighlightedIndex}
+                  setHighlightedIndex={setDisciplineHighlightedIndex}
+                  inputRef={disciplineInputRef}
+                  onSelectDiscipline={(d) => { setDisciplineId(String(d.id)); setDisciplineQuery(d.name); setDisciplineResultsOpen(false); }}
+                />
               </div>
             </div>
 
@@ -273,6 +311,16 @@ export default function CarenciaEditForm({ carenciaId, initial, motives, areas, 
                 </div>
               </div>
             )}
+
+            {/* ── Observações ───────────────────────────────────── */}
+            <div className="flex flex-col gap-2">
+              <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Observações</Label>
+              <textarea
+                value={observations}
+                onChange={(e) => setObservations(e.target.value)}
+                className="w-full min-h-[10vh] p-3 rounded-md border bg-background resize-vertical text-sm"
+              />
+            </div>
 
             {/* ── Ações ──────────────────────────────────────────── */}
             <div className="flex justify-end gap-2 pt-4 border-t">

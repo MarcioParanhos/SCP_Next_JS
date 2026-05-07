@@ -226,6 +226,8 @@ model Carencia {
   afternoon      Int           @default(0)
   night          Int           @default(0)
   total          Int           @default(0)
+  // Observações livres sobre a carência
+  observations   String?
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
 

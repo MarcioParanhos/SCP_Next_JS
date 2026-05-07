@@ -36,7 +36,7 @@ export async function PATCH(req: Request, context: any) {
     if (Number.isNaN(id)) return new NextResponse("Invalid id", { status: 400 });
 
     const body = await req.json();
-    const { server_id, motive_id, area_id, discipline_id, rows } = body;
+    const { server_id, motive_id, area_id, discipline_id, rows, observations } = body;
 
     // Atualiza os campos principais da carência
     const updateData: Record<string, any> = { updatedAt: new Date() };
@@ -44,6 +44,7 @@ export async function PATCH(req: Request, context: any) {
     if (motive_id     !== undefined) updateData.motive_id     = motive_id     ? Number(motive_id)     : null;
     if (area_id       !== undefined) updateData.area_id       = area_id       ? Number(area_id)       : null;
     if (discipline_id !== undefined) updateData.discipline_id = discipline_id ? Number(discipline_id) : null;
+    if (observations  !== undefined) updateData.observations  = observations || null;
 
     await prisma.carencia.update({ where: { id }, data: updateData });
 
