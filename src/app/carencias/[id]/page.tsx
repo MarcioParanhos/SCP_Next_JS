@@ -153,12 +153,13 @@ export default async function Page({ params }: { params: { id: string } }) {
                       <CarenciaEditForm
                         carenciaId={carencia.id}
                         initial={{
-                          server_id:     carencia.server_id     ?? null,
-                          server_name:   carencia.server?.name  ?? null,
-                          motive_id:     carencia.motive_id     ?? null,
-                          area_id:       carencia.area_id       ?? null,
-                          discipline_id: carencia.discipline_id ?? null,
-                          observations:  carencia.observations  ?? "",
+                          server_id:       carencia.server_id       ?? null,
+                          server_name:     carencia.server?.name    ?? null,
+                          motive_id:       carencia.motive_id       ?? null,
+                          area_id:         carencia.area_id         ?? null,
+                          discipline_id:   carencia.discipline_id   ?? null,
+                          discipline_name: carencia.discipline?.name ?? null,
+                          observations:    carencia.observations    ?? "",
                           rows: (carencia.rows ?? []).map((r: any) => ({
                             id:        r.id,
                             discipline: r.discipline ?? "",

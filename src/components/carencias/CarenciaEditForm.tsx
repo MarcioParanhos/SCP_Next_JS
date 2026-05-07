@@ -31,6 +31,7 @@ type Props = {
     motive_id?: number | null;
     area_id?: number | null;
     discipline_id?: number | null;
+    discipline_name?: string | null;
     observations?: string | null;
     rows: Row[];
   };
@@ -62,13 +63,16 @@ export default function CarenciaEditForm({ carenciaId, initial, motives, areas, 
   const [saving, setSaving]             = React.useState(false);
 
   // Disciplina search (controlled, like ServerSearch)
-  const [disciplineQuery, setDisciplineQuery]           = React.useState<string>(initial.discipline_id ? "" : "");
+  const [disciplineQuery, setDisciplineQuery]           = React.useState<string>(initial.discipline_name ?? "");
   const [debouncedDisciplineQuery, setDebouncedDisciplineQuery] = React.useState<string>("");
   const [disciplineResults, setDisciplineResults]       = React.useState<any[]>([]);
   const [loadingDisciplines, setLoadingDisciplines]     = React.useState(false);
   const [disciplineResultsOpen, setDisciplineResultsOpen] = React.useState(false);
   const [disciplineHighlightedIndex, setDisciplineHighlightedIndex] = React.useState(0);
   const disciplineInputRef = React.useRef<HTMLInputElement | null>(null);
+  // Prevent opening the discipline results dropdown on initial load when we
+  // prefill the input from `initial.discipline_name`.
+  const skipInitialDisciplineFetch = React.useRef<boolean>(initial.discipline_name ? true : false);
 
   // Debounce
   React.useEffect(() => {
@@ -112,6 +116,9 @@ export default function CarenciaEditForm({ carenciaId, initial, motives, areas, 
   // Fetch disciplinas quando query mudar
   React.useEffect(() => {
     if (!debouncedDisciplineQuery) { setDisciplineResults([]); return; }
+    // If we prefilled the input from the initial prop, skip the first automatic
+    // fetch so the dropdown does not open immediately on load.
+    if (skipInitialDisciplineFetch.current) { skipInitialDisciplineFetch.current = false; return; }
     let mounted = true;
     (async () => {
       setLoadingDisciplines(true);

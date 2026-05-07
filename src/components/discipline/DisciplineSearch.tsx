@@ -31,7 +31,7 @@ export default function DisciplineSearch({
 }: Props) {
   return (
     <div>
-      <label className="mb-2 block text-sm font-medium">Disciplina</label>
+      
       <div className="relative">
         <div className="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
           <svg className="h-4 w-4 text-muted-foreground" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
