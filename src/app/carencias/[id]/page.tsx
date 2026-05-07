@@ -16,6 +16,8 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { Undo2 } from "lucide-react";
 import { formatDateLocal } from "@/lib/formatDate";
+import CarenciaEditForm from "@/components/carencias/CarenciaEditForm";
+import CarenciaEditButton from "@/components/carencias/CarenciaEditButton";
 
 // Página de detalhe de uma carência
 export default async function Page({ params }: { params: { id: string } }) {
@@ -63,6 +65,14 @@ export default async function Page({ params }: { params: { id: string } }) {
     }
   }
 
+  // Buscar listas para os selects do formulário de edição
+  const [servidoresList, motivesList, areasList, disciplinesList] = await Promise.all([
+    prisma.employee.findMany({ select: { id: true, name: true }, orderBy: { name: "asc" } }),
+    prisma.motive.findMany({ where: { active: true }, select: { id: true, description: true }, orderBy: { description: "asc" } }),
+    prisma.area.findMany({ where: { active: true }, select: { id: true, name: true }, orderBy: { name: "asc" } }),
+    prisma.discipline.findMany({ select: { id: true, name: true }, orderBy: { name: "asc" } }),
+  ]);
+
   // Mantemos layout consistente com as outras páginas do sistema
   return (
     <SidebarProvider
@@ -88,6 +98,7 @@ export default async function Page({ params }: { params: { id: string } }) {
                     <Undo2 className="w-4 h-4" />
                   </Button>
                 </Link>
+                <CarenciaEditButton />
               </div>
             </div>
 
@@ -137,6 +148,32 @@ export default async function Page({ params }: { params: { id: string } }) {
 
                     {/* 'Criado por' removido conforme solicitado */}
 
+                    {/* Formulário de edição inline */}
+                    <div id="edit-form">
+                      <CarenciaEditForm
+                      carenciaId={carencia.id}
+                      initial={{
+                        server_id:     carencia.server_id     ?? null,
+                        server_name:   carencia.server?.name  ?? null,
+                        motive_id:     carencia.motive_id     ?? null,
+                        area_id:       carencia.area_id       ?? null,
+                        discipline_id: carencia.discipline_id ?? null,
+                        rows: (carencia.rows ?? []).map((r: any) => ({
+                          id:        r.id,
+                          discipline: r.discipline ?? "",
+                          area:       r.area       ?? "",
+                          morning:    r.morning    ?? 0,
+                          afternoon:  r.afternoon  ?? 0,
+                          night:      r.night      ?? 0,
+                        })),
+                      }}
+                      servidores={[]}
+                      motives={motivesList.map((m) => ({ id: m.id, name: m.description }))}
+                      areas={areasList.map((a) => ({ id: a.id, name: a.name }))}
+                      disciplines={disciplinesList.map((d) => ({ id: d.id, name: d.name }))}
+                      />
+                    </div>
+
                     <div className="mt-4">
                       <div className="text-sm text-muted-foreground">Linhas detalhadas</div>
                       <div className="overflow-hidden rounded-lg border mt-2">
@@ -153,7 +190,7 @@ export default async function Page({ params }: { params: { id: string } }) {
                             </TableHeader>
                           <TableBody>
                             {carencia.rows && carencia.rows.length > 0 ? (
-                              carencia.rows.map((r) => (
+                              carencia.rows.map((r: any) => (
                                 <TableRow key={r.id}>
                                   <TableCell>{r.discipline ?? "-"}</TableCell>
                                   <TableCell>{r.area ?? "-"}</TableCell>
@@ -184,8 +221,11 @@ export default async function Page({ params }: { params: { id: string } }) {
                   </CardContent>
                 </Card>
 
-                <div className="flex gap-2">
-                  <Badge className="bg-muted text-muted-foreground">Criado em: {formatDateLocal(carencia.createdAt)}</Badge>
+                <div className="flex gap-2 flex-wrap">
+                  <Badge className="bg-muted text-muted-foreground">
+                    Criado em: {formatDateLocal(carencia.createdAt)}
+                    {carencia.createdBy?.name ? ` • por ${carencia.createdBy.name}` : ""}
+                  </Badge>
                   <Badge className="bg-muted text-muted-foreground">Atualizado em: {formatDateLocal(carencia.updatedAt)}</Badge>
                 </div>
               </>
