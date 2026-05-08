@@ -14,7 +14,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { Undo2 } from "lucide-react";
+import { Undo2, Briefcase, School } from "lucide-react";
 import { formatDateLocal } from "@/lib/formatDate";
 import CarenciaEditForm from "@/components/carencias/CarenciaEditForm";
 import CarenciaEditButton from "@/components/carencias/CarenciaEditButton";
@@ -45,6 +45,16 @@ export default async function Page({ params }: { params: { id: string } }) {
     },
   }) as any;
 
+  // Buscar listas para os selects do formulário de edição
+  // Necessário aqui antes de mapear `carencia.rows` que pode referenciar ids
+  // de disciplinas/áreas que precisamos traduzir para nomes legíveis.
+  const [servidoresList, motivesList, areasList, disciplinesList] = await Promise.all([
+    prisma.employee.findMany({ select: { id: true, name: true }, orderBy: { name: "asc" } }),
+    prisma.motive.findMany({ where: { active: true }, select: { id: true, description: true }, orderBy: { description: "asc" } }),
+    prisma.area.findMany({ where: { active: true }, select: { id: true, name: true }, orderBy: { name: "asc" } }),
+    prisma.discipline.findMany({ select: { id: true, name: true }, orderBy: { name: "asc" } }),
+  ]);
+
   // Se as linhas detalhadas armazenarem um id de área em vez do nome (ex.: "1"),
   // fazemos um lookup em `Area` e substituímos pelo nome legível.
   if (carencia?.rows && carencia.rows.length > 0) {
@@ -63,15 +73,28 @@ export default async function Page({ params }: { params: { id: string } }) {
         area: r.area && areaById[String(r.area)] ? areaById[String(r.area)] : r.area,
       }));
     }
+    // Se as linhas detalhadas armazenarem um id de disciplina em vez do nome,
+    // substituímos pelo nome usando a lista `disciplinesList` carregada acima.
+    const disciplineIds = Array.from(
+      new Set(
+        carencia.rows
+          .map((r: any) => (r.discipline && String(r.discipline).match(/^\d+$/) ? Number(r.discipline) : null))
+          .filter(Boolean)
+      )
+    ) as number[];
+    if (disciplineIds.length > 0) {
+      const discById = Object.fromEntries(disciplinesList.map((d: any) => [String(d.id), d.name]));
+      carencia.rows = carencia.rows.map((r: any) => ({
+        ...r,
+        discipline: r.discipline && discById[String(r.discipline)] ? discById[String(r.discipline)] : r.discipline,
+      }));
+    }
   }
 
-  // Buscar listas para os selects do formulário de edição
-  const [servidoresList, motivesList, areasList, disciplinesList] = await Promise.all([
-    prisma.employee.findMany({ select: { id: true, name: true }, orderBy: { name: "asc" } }),
-    prisma.motive.findMany({ where: { active: true }, select: { id: true, description: true }, orderBy: { description: "asc" } }),
-    prisma.area.findMany({ where: { active: true }, select: { id: true, name: true }, orderBy: { name: "asc" } }),
-    prisma.discipline.findMany({ select: { id: true, name: true }, orderBy: { name: "asc" } }),
-  ]);
+  
+
+  // Determina se a vaga é profissionalizante (possui curso) ou educação básica
+  const vacancyKind = carencia?.course ? 'Profissionalizante' : 'Educação Básica';
 
   // Mantemos layout consistente com as outras páginas do sistema
   return (
@@ -113,10 +136,27 @@ export default async function Page({ params }: { params: { id: string } }) {
                 {/* Card principal ocupa toda a largura disponível */}
                 <Card className="mb-4 w-full">
                   <CardHeader className="px-6 py-4 bg-primary/5">
-                    <CardTitle className="text-lg">{carencia.schoolUnit?.name ?? `Carência #${carencia.id}`}</CardTitle>
-                    <CardDescription className="text-sm text-muted-foreground">
-                      Unidade: {carencia.schoolUnit?.sec_cod ?? "-"} • Tipo: {carencia.type}
-                    </CardDescription>
+                    <div className="flex items-start justify-between w-full">
+                      <div>
+                        <div className="flex items-center gap-3">
+                          <div className="flex items-center justify-center h-12 w-12 rounded-full bg-primary text-primary-foreground">
+                            <School className="h-6 w-6" />
+                          </div>
+                          <div>
+                            <CardTitle className="text-lg">{carencia.schoolUnit?.name ?? `Carência #${carencia.id}`}</CardTitle>
+                            <CardDescription className="text-sm text-muted-foreground">
+                              Unidade: {carencia.schoolUnit?.sec_cod ?? "-"} • Tipo: {carencia.type}
+                            </CardDescription>
+                          </div>
+                        </div>
+                      </div>
+                      <div>
+                        <Badge className="inline-flex items-center gap-2 text-sm">
+                          {carencia?.course ? <Briefcase className="w-4 h-4" /> : <School className="w-4 h-4" />}
+                          <span>{vacancyKind} • {carencia?.type === 'TEMPORARY' ? 'Temporária' : 'Real'}</span>
+                        </Badge>
+                      </div>
+                    </div>
                   </CardHeader>
                   <CardContent>
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -194,7 +234,7 @@ export default async function Page({ params }: { params: { id: string } }) {
                             {carencia.rows && carencia.rows.length > 0 ? (
                               carencia.rows.map((r: any) => (
                                 <TableRow key={r.id}>
-                                  <TableCell>{r.discipline ?? "-"}</TableCell>
+                                  <TableCell>{r.discipline ?? carencia.discipline?.name ?? "-"}</TableCell>
                                   <TableCell>{r.area ?? "-"}</TableCell>
                                   <TableCell className="text-center">{r.morning ?? 0}</TableCell>
                                   <TableCell className="text-center">{r.afternoon ?? 0}</TableCell>
@@ -214,12 +254,12 @@ export default async function Page({ params }: { params: { id: string } }) {
 
                     <div className="mt-6">
                       <div className="text-sm text-muted-foreground mb-2">Observações</div>
-                      <textarea
+                      <div
                         aria-label="Observações"
-                        defaultValue={carencia.observations ?? ""}
-                        readOnly
-                        className="w-full min-h-[12vh] max-h-[30vh] p-3 rounded-md border bg-background resize-vertical"
-                      />
+                        className="w-full min-h-[12vh] max-h-[30vh] p-3 rounded-md border bg-background whitespace-pre-wrap text-sm"
+                      >
+                        {carencia.observations ?? ""}
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
